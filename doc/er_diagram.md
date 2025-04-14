@@ -28,8 +28,8 @@ erDiagram
         UUID user_id FK "User ID (User.id)"
         UUID team_id FK "Team ID (Team.id)"
         ENUM role "Role within team (leader/member)"
-        ENUM status "Membership status (invited/joined/rejected)"
-        TIMESTAMP joined_at "Join timestamp"
+        ENUM status "Membership status (pending/joined/rejected)"
+        TIMESTAMP joined_at "Join timestamp (nullable)"
         TIMESTAMP created_at "Created timestamp"
         TIMESTAMP updated_at "Updated timestamp"
     }
@@ -70,6 +70,17 @@ erDiagram
         TIMESTAMP created_at "Created timestamp"
     }
 
+    NOTIFICATION {
+        UUID id PK "Notification ID"
+        UUID user_id FK "Target user ID (User.id)"
+        ENUM type "Notification type (join_request_approved, join_request_rejected, etc.)"
+        VARCHAR title "Notification title"
+        TEXT content "Notification content"
+        BOOLEAN read "Read flag"
+        TIMESTAMP created_at "Created timestamp"
+        TIMESTAMP read_at "Read timestamp (nullable)"
+    }
+
     USER ||--o{ USERTEAM : "joins"
     TEAM ||--o{ USERTEAM : "has members"
     USER ||--o{ TASK : "creates"
@@ -80,4 +91,5 @@ erDiagram
     USER ||--o{ LIKE : "likes"
     TASK ||--o{ LIKE : "liked by"
     COMMENT ||--o{ LIKE : "liked by"
+    USER ||--o{ NOTIFICATION : "receives"
 ```
