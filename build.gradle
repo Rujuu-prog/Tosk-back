@@ -81,7 +81,7 @@ pmd {
 spotbugs { toolVersion = '4.8.6' }
 
 tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
-    effort = 'max'
+    effort = Effort.MAX
     reportLevel = 'medium'
     reports {
         html.required.set(true)
