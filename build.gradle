@@ -2,11 +2,23 @@ plugins {
     id 'org.springframework.boot' version '3.1.2'
     id 'io.spring.dependency-management' version '1.1.0'
     id 'java'
+
+    // ---- CI の品質ゲート系 ----
+    id 'checkstyle'
+    id 'pmd'
+    id 'jacoco'
+    id 'com.github.spotbugs' version '6.0.26'
+    id 'com.diffplug.spotless' version '6.25.0'
 }
 
 group = 'com.tosk.app'
 version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '21'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
 
 repositories {
     mavenCentral()
@@ -19,16 +31,90 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
-    // Test
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.security:spring-security-test'
+
     // Database
     runtimeOnly 'org.postgresql:postgresql'
-    // lombok
+
+    // OpenAPI
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+
+    // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
-    // OpenAPI
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+spotless {
+    java {
+        googleJavaFormat('1.17.0')
+        target 'src/**/*.java'
+    }
+}
+
+checkstyle {
+    toolVersion = '10.17.0'
+    // ルールファイルを置くなら: configDirectory = file("$rootDir/config/checkstyle")
+    // 何も置かなくてもデフォルトの Sun チェックで動く
+}
+
+pmd {
+    toolVersion = '7.0.0'
+    // まずはデフォルトのルールセットを使う（厳しすぎたら後で絞る）
+    ruleSets = [
+            'category/java/bestpractices.xml',
+            'category/java/errorprone.xml',
+            'category/java/performance.xml',
+            'category/java/codestyle.xml'
+    ]
+}
+
+spotbugs {
+    toolVersion = '4.8.6'
+}
+tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
+    effort = com.github.spotbugs.snom.Effort.MAX
+    reportLevel = com.github.spotbugs.snom.ReportLevel.MEDIUM
+    reports {
+        html.required = true
+        xml.required = false
+        sarif.required = false
+    }
+}
+
+jacoco {
+    toolVersion = '0.8.12'
+}
+jacocoTestReport {
+    reports {
+        xml.required = true   // Qodana/コードスキャン連携したくなった時用
+        html.required = true
+        csv.required = false
+    }
+}
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                counter = 'INSTRUCTION'
+                value = 'COVEREDRATIO'
+                minimum = 0.80
+            }
+        }
+        rule {
+            limit {
+                counter = 'BRANCH'
+                value = 'COVEREDRATIO'
+                minimum = 0.70
+            }
+        }
+    }
 }
