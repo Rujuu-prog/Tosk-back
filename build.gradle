@@ -1,3 +1,6 @@
+import com.github.spotbugs.snom.Effort
+import com.github.spotbugs.snom.ReportLevel
+
 plugins {
     id 'org.springframework.boot' version '3.1.2'
     id 'io.spring.dependency-management' version '1.1.0'
@@ -20,9 +23,7 @@ java {
     }
 }
 
-repositories {
-    mavenCentral()
-}
+repositories { mavenCentral() }
 
 dependencies {
     // Spring Boot
@@ -53,6 +54,7 @@ test {
     finalizedBy jacocoTestReport
 }
 
+// ---- Spotless ----
 spotless {
     java {
         googleJavaFormat('1.17.0')
@@ -60,15 +62,16 @@ spotless {
     }
 }
 
+// ---- Checkstyle ----
 checkstyle {
     toolVersion = '10.17.0'
-    // ルールファイルを置くなら: configDirectory = file("$rootDir/config/checkstyle")
-    // 何も置かなくてもデフォルトの Sun チェックで動く
+    // リポジトリ内の設定を使う
+    config = resources.text.fromFile("$rootDir/config/checkstyle/checkstyle.xml")
 }
 
+// ---- PMD ----
 pmd {
     toolVersion = '7.0.0'
-    // まずはデフォルトのルールセットを使う（厳しすぎたら後で絞る）
     ruleSets = [
             'category/java/bestpractices.xml',
             'category/java/errorprone.xml',
@@ -77,29 +80,31 @@ pmd {
     ]
 }
 
-spotbugs {
-    toolVersion = '4.8.6'
-}
+// ---- SpotBugs ----
+spotbugs { toolVersion = '4.8.6' }
+
 tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
-    effort = com.github.spotbugs.snom.Effort.MAX
-    reportLevel = com.github.spotbugs.snom.ReportLevel.MEDIUM
+    // Enum は import して値だけ書く
+    effort = Effort.MAX
+    reportLevel = ReportLevel.MEDIUM
     reports {
-        html.required = true
-        xml.required = false
-        sarif.required = false
+        html.required.set(true)
+        xml.required.set(false)
+        sarif.required.set(false)
     }
 }
 
-jacoco {
-    toolVersion = '0.8.12'
-}
+// ---- JaCoCo ----
+jacoco { toolVersion = '0.8.12' }
+
 jacocoTestReport {
     reports {
-        xml.required = true   // Qodana/コードスキャン連携したくなった時用
-        html.required = true
-        csv.required = false
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
     }
 }
+
 jacocoTestCoverageVerification {
     violationRules {
         rule {
