@@ -1,0 +1,25 @@
+{
+  "name": "Tag protection for v* (release tags)",
+  "target": "tag",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/tags/v*"],
+      "exclude": []
+    }
+  },
+  "bypass_actors": [
+    {
+      "actor_id": 0,
+      "actor_type": "RepositoryRole",
+      "repository_role_name": "admin",
+      "bypass_mode": "always"
+    }
+  ],
+  "rules": {
+    "required_signatures": true,
+    "deletion": false,
+    "update": false,
+    "creation": true
+  }
+}
