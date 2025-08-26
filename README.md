@@ -11,8 +11,6 @@ Todo + SNS アプリケーションのバックエンド。
 * セキュリティ: Spring Security + JWT（HttpOnly/Secure Cookie）
 * 品質ゲート: Spotless / Checkstyle / PMD / SpotBugs / JaCoCo
 
-詳細は [doc/overview.md](doc/overview.md) を参照。
-
 ---
 
 ## よく使うコマンド（早見表）
@@ -58,5 +56,5 @@ Todo + SNS アプリケーションのバックエンド。
 
 ## ドキュメント
 
-* 設計概要: [doc/overview.md](doc/overview.md)
-* コーディングガイド: [doc/backend\_coding\_style.md](doc/backend_coding_style.md)
+* 設計概要: [doc/architecture/overview.md](doc/architecture/overview.md)
+* コーディングガイド: [doc/conventions/backend_coding_style.md](doc/conventions/backend_coding_style.md)
