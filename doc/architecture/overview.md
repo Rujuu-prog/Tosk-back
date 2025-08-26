@@ -32,11 +32,11 @@ DB (PostgreSQL) / 外部サービス
 
 * **User**: 認証主体。プロフィール情報、作成タスク/コメント/いいね/通知を保持。
 * **Team**: 複数ユーザーを束ねる。オーナーを持つ。
-* **UserTeam**: ユーザーとチームの関係（role: leader/member, status: pending/joined/rejected）【100†er\_diagram.md†L26-L35】。
-* **Task**: タスクの中心。属性: title, description, due\_date, priority, visibility。like\_count/comment\_count を保持【100†er\_diagram.md†L37-L53】。
-* **Comment**: タスクへのコメント。スレッド型（parent\_comment\_id を持つ）【100†er\_diagram.md†L60-L72】。
-* **Like**: Task または Comment に対するいいね【100†er\_diagram.md†L81-L90】。
-* **Notification**: イベントをユーザーに通知（join\_request\_approved など）【100†er\_diagram.md†L92-L106】。
+* **UserTeam**: ユーザーとチームの関係（role: leader/member, status: pending/joined/rejected）。
+* **Task**: タスクの中心。属性: title, description, due\_date, priority, visibility。like\_count/comment\_count を保持。
+* **Comment**: タスクへのコメント。スレッド型（parent\_comment\_id を持つ）。
+* **Like**: Task または Comment に対するいいね。
+* **Notification**: イベントをユーザーに通知（join\_request\_approved など）。
 
 ---
 
