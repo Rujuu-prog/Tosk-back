@@ -1,13 +1,16 @@
+import com.github.spotbugs.snom.Effort
+import com.github.spotbugs.snom.Confidence
+
 plugins {
     id 'org.springframework.boot' version '3.1.2'
     id 'io.spring.dependency-management' version '1.1.0'
     id 'java'
 
-    // ---- CI の品質ゲート系 ----
+    // ---- 品質ゲート ----
     id 'checkstyle'
     id 'pmd'
     id 'jacoco'
-    id 'com.github.spotbugs' version '6.0.26'
+    id 'com.github.spotbugs' version '6.2.5'
     id 'com.diffplug.spotless' version '6.25.0'
 }
 
@@ -15,40 +18,48 @@ group = 'com.tosk.app'
 version = '0.0.1-SNAPSHOT'
 
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+}
+
+// Windows 文字化け対策（javac出力）
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
 }
 
 repositories { mavenCentral() }
 
 dependencies {
-    // Spring Boot
+    // ---- Spring Boot
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
+    runtimeOnly   'org.postgresql:postgresql'
 
-    // Database
-    runtimeOnly 'org.postgresql:postgresql'
+    // ---- OpenAPI (Boot 3系安定ライン)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.11'
 
-    // OpenAPI
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
-
-    // Lombok
-    compileOnly 'org.projectlombok:lombok'
+    // ---- Lombok
+    compileOnly         'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-    testCompileOnly 'org.projectlombok:lombok'
+    testCompileOnly         'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
 
-    // Test
+    // ---- Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // ---- SpotBugs 実行クラスパスを明示
+    spotbugs 'com.github.spotbugs:spotbugs:4.9.3'
+    spotbugs 'org.apache.commons:commons-lang3:3.17.0'
 }
 
-test {
-    useJUnitPlatform()
-    finalizedBy jacocoTestReport
+// spotbugs 構成だけは依存バージョンを強制して安定化
+configurations.named('spotbugs') {
+    resolutionStrategy {
+        force 'com.github.spotbugs:spotbugs:4.9.3'
+        force 'org.apache.commons:commons-lang3:3.17.0'
+    }
 }
 
 // ---- Spotless ----
@@ -62,7 +73,6 @@ spotless {
 // ---- Checkstyle ----
 checkstyle {
     toolVersion = '10.17.0'
-    // リポジトリ内の設定を使う
     config = resources.text.fromFile("$rootDir/config/checkstyle/checkstyle.xml")
 }
 
@@ -75,23 +85,36 @@ pmd {
             'category/java/performance.xml',
             'category/java/codestyle.xml'
     ]
+    // 初期構築期に落ちにくくしたいなら ↓を true に変更（違反があっても失敗にしない）
+    ignoreFailures = false
 }
 
 // ---- SpotBugs ----
-spotbugs { toolVersion = '4.8.6' }
-
+// 6.2系の既定に合わせて 4.9.3 を明示。Groovy DSLは valueOf(...) が安定
+spotbugs {
+    toolVersion = '4.9.3'
+    effort = Effort.valueOf('MAX')
+    reportLevel = Confidence.valueOf('MEDIUM')
+    jvmArgs = ['-Dfile.encoding=UTF-8'] // Windows端末での文字化け防止
+}
+// レポート形式などはタスク側で
 tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
-    effort = Effort.MAX
-    reportLevel = 'medium'
     reports {
         html.required.set(true)
         xml.required.set(false)
         sarif.required.set(false)
     }
+    // 初期は落ちにくくしたいなら ↓を true に（違反があっても失敗しない）
+    ignoreFailures = false
 }
 
 // ---- JaCoCo ----
-jacoco { toolVersion = '0.8.12' }
+jacoco { toolVersion = '0.8.12' } // 0.8.13に上げてもOK
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
 
 jacocoTestReport {
     reports {
@@ -118,4 +141,19 @@ jacocoTestCoverageVerification {
             }
         }
     }
+}
+
+// JaCoCoは verify 前にテスト＆レポートを作らせる
+tasks.named('jacocoTestReport') { dependsOn 'test' }
+tasks.named('jacocoTestCoverageVerification') { dependsOn 'test' }
+
+// 落ちたらビルド失敗＝厳格モード
+tasks.named('check') {
+    dependsOn(
+            'spotbugsMain', 'spotbugsTest',
+            'pmdMain', 'pmdTest',
+            'checkstyleMain', 'checkstyleTest',
+            'jacocoTestCoverageVerification',
+            'jacocoTestReport' // レポート生成
+    )
 }
