@@ -1,55 +1,46 @@
 # Tosk Backend
 
-Spring Boot 3.1 / Java 21 ベースの Todo + SNS アプリケーションのバックエンドです。
+Todo + SNS アプリケーションのバックエンド。
 
 ---
 
 ## アーキテクチャ概要
 
-* レイヤード構造: API → Application → Domain → Infra → DB
-* DB: PostgreSQL + Flyway (UUID ID, 監査列付き)
-* セキュリティ: Spring Security + JWT (HttpOnly/Secure Cookie)
-* 品質ゲート: Spotless / Checkstyle / PMD / SpotBugs / JaCoCo【295†overview\.md†L70-L83】【298†backend\_coding\_style.md†L243-L251】
+* レイヤード: API → Application → Domain → Infra → DB
+* DB: PostgreSQL + Flyway（UUID、監査列）
+* セキュリティ: Spring Security + JWT（HttpOnly/Secure Cookie）
+* 品質ゲート: Spotless / Checkstyle / PMD / SpotBugs / JaCoCo
 
 詳細は [doc/overview.md](doc/overview.md) を参照。
 
 ---
 
-## ローカル開発フロー
+## よく使うコマンド（早見表）
 
-### 1. コード整形
+| 目的                          | コマンド                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------- |
+| 自動整形（Google Java Format）    | `./gradlew spotlessApply`                                                                   |
+| 静的解析（個別）                    | `./gradlew checkstyleMain checkstyleTest` / `pmdMain pmdTest` / `spotbugsMain spotbugsTest` |
+| テスト＋レポート                    | `./gradlew test jacocoTestReport jacocoTestCoverageVerification`                            |
+| **一括（推奨）**: 整形→クリーン→品質ゲート全部 | `./gradlew spotlessApply clean check`                                                       |
+| 一括（整形なし）                    | `./gradlew clean check`                                                                     |
+| ビルド                         | `./gradlew build`                                                                           |
 
-```bash
-./gradlew spotlessApply
-```
+> `check` には **Checkstyle / PMD / SpotBugs / テスト / JaCoCo** をぶら下げています。未整形がある場合は `spotlessCheck` で失敗するため、必要に応じて事前に `spotlessApply` を実行してください。
 
-Google Java Format に従って自動整形します。差分があれば必ずコミットしてください。
+---
 
-### 2. 静的解析
+## 推奨ローカル開発フロー
 
-```bash
-./gradlew checkstyleMain checkstyleTest
-./gradlew pmdMain pmdTest
-./gradlew spotbugsMain spotbugsTest
-```
+1. `spotlessApply`（自動整形）
+2. 実装・修正
+3. `clean check` で一括検証（静的解析・テスト・カバレッジ）
+4. レポート確認 → 修正 → コミット
 
-Checkstyle / PMD / SpotBugs による品質ゲート。違反があれば修正してください。
+### カバレッジしきい値
 
-### 3. テスト & カバレッジ
-
-```bash
-./gradlew test jacocoTestReport jacocoTestCoverageVerification
-```
-
-JUnit テストを実行し、JaCoCo レポートを生成。命令網羅率 80%、分岐網羅率 70% を満たさないと失敗します【299†strategy.md†L16-L24】。
-
-### 4. ビルド（統合）
-
-```bash
-./gradlew build
-```
-
-すべてのチェックとテストを通過した状態でビルドします。
+* 命令網羅率（INSTRUCTION）: **80%**
+* 分岐網羅率（BRANCH）: **70%**
 
 ---
 
@@ -58,9 +49,14 @@ JUnit テストを実行し、JaCoCo レポートを生成。命令網羅率 80%
 * Spotless: `build/reports/spotless/`
 * Checkstyle: `build/reports/checkstyle/`
 * PMD: `build/reports/pmd/`
-* SpotBugs: `build/reports/spotbugs/`
+* SpotBugs: `build/reports/spotbugs/`（例: `main.html` / `test.html`）
 * JaCoCo: `build/reports/jacoco/test/html/index.html`
+
+> 初期構築中のみ一時的に失敗を避けたい場合は、`build.gradle` の設定で `pmd { ignoreFailures = true }` と `tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach { ignoreFailures = true }` を有効化し、レポートは出しつつ `check` を通すこともできます（本運用前に戻してください）。
 
 ---
 
-ドキュメントは [doc](doc) を参照。
+## ドキュメント
+
+* 設計概要: [doc/overview.md](doc/overview.md)
+* コーディングガイド: [doc/backend\_coding\_style.md](doc/backend_coding_style.md)
