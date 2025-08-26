@@ -1,0 +1,52 @@
+{
+  "name": "Branch protection for main & release/*",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["~DEFAULT_BRANCH", "refs/heads/release/*"],
+      "exclude": []
+    }
+  },
+  "bypass_actors": [
+    {
+      "actor_id": 0,
+      "actor_type": "RepositoryRole",
+      "repository_role_name": "admin",
+      "bypass_mode": "pull_request"
+    },
+    {
+      "actor_id": 0,
+      "actor_type": "RepositoryRole",
+      "repository_role_name": "maintain",
+      "bypass_mode": "pull_request"
+    }
+  ],
+  "rules": [
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "do_not_enforce_on_create": true,
+        "strict": true,
+        "required_status_checks": [
+          { "context": "build" }
+        ]
+      }
+    },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": true,
+        "required_approving_review_count": 1,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true
+      }
+    },
+    { "type": "restrict_force_pushes", "parameters": { "block_creations": false } },
+    { "type": "restrict_deletions", "parameters": {} },
+    { "type": "required_linear_history", "parameters": {} },
+    { "type": "non_fast_forward", "parameters": {} },
+    { "type": "commit_message_pattern", "parameters": { "operator": "does_not_match", "pattern": "WIP" } }
+  ]
+}
