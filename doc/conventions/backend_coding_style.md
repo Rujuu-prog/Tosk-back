@@ -55,9 +55,9 @@ tosk-back/
 * **DTOで形式検証**、**ドメインでビジネス検証**。
 * 制約例:
 
-    * Task: title 1–120文字, description ≤10,000文字, dueDate ≥ 今日, priority ∈ {low,medium,high}, visibility ∈ {private,team,public}【68†er\_diagram.md†L37-L53】
-    * Comment: content 1–5,000文字【68†er\_diagram.md†L60-L72】
-    * Like: ユーザー×対象に1回のみ（重複禁止）【68†er\_diagram.md†L81-L90】
+    * Task: title 1–120文字, description ≤10,000文字, dueDate ≥ 今日, priority ∈ {low,medium,high}, visibility ∈ {private,team,public} ([詳細](../er_diagram.md#task))
+    * Comment: content 1–5,000文字 ([詳細](../er_diagram.md#comment))
+    * Like: ユーザー×対象に1回のみ（重複禁止） ([詳細](../er_diagram.md#like))
 
 ---
 
