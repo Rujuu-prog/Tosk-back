@@ -74,7 +74,7 @@ tosk-back/
 ## 6. セキュリティ
 
 * **認証**: Spring Security + JWT（Secure/HttpOnly/SameSite=Strict クッキー）。
-* **認可**: Taskの `visibility`（private/team/public）と `UserTeam`（joined, role）に基づき強制【68†er\_diagram.md†L26-L35】【68†er\_diagram.md†L49-L53】。
+* **認可**: Taskの `visibility`（private/team/public）と `UserTeam`（joined, role）に基づき強制（詳細は [ER図設計](../er_diagram.md) の該当セクションを参照）。
 * **CORS**: origin 明示。credentials=true 時は origin 固定。
 * **CSRF**: stateless API 前提で無効化。Origin検証/レート制限を適用。
 
