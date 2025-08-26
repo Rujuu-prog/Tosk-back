@@ -1,0 +1,40 @@
+name: Qodana
+
+on:
+  pull_request:
+    branches: [ main, dev, "release/**" ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write   # PR注釈/コメントに必要
+  checks: write          # アノテーション発行に必要
+  # security-events: write  # ← SARIFをCode Scanningに流す場合のみ有効化
+
+concurrency:
+  group: qodana-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qodana:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Qodana Scan
+        uses: JetBrains/qodana-action@v2025.2
+        # env:
+        #   QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}  # ← Cloud連携する時だけ
+        with:
+          pr-mode: true          # 差分だけ解析（ノイズ/時間を抑制）
+          use-caches: true
+          post-pr-comment: true
+          use-annotations: true
+          upload-result: false   # Code Scanningに流したいなら true に
+          # push-fixes: 'none'   # 自動修正を使うなら 'pull-request' 等
