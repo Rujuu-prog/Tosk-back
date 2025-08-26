@@ -123,8 +123,8 @@ tosk-back/
 
 ## 11. セキュリティ・テスト観点
 
-* 可視性: private/team/public ごとのアクセス制御テスト【68†er\_diagram.md†L49-L53】
-* メンバーシップ: `pending/joined/rejected` の遷移テスト【68†er\_diagram.md†L26-L35】
+* 可視性: private/team/public ごとのアクセス制御テスト ([ER図該当箇所](../er_diagram.md#アクセス制御))
+* メンバーシップ: `pending/joined/rejected` の遷移テスト ([ER図該当箇所](../er_diagram.md#メンバーシップ遷移))
 * 入力: Validationエラーの一貫性（400）
 * 認証: Cookie属性（HttpOnly/SameSite）とCORS設定の確認
 
