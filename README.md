@@ -103,8 +103,10 @@ docker compose down
 - ログ: prod プロファイルは JSON 出力（logstash 互換）、開発は可読フォーマット。
 - リクエストID: `X-Request-Id` を受理/生成してレスポンスに反映。ログの `rid`/`mdc.requestId` に出力。
 - メトリクス: `/actuator/prometheus` を公開（prod/docker）。Micrometer + Prometheus registry を同梱。
+- ビルド情報: `/actuator/info` に version/時間/commit を露出（springBoot.buildInfo）。prod で公開する場合は認可の上で。
 - 停止: `server.shutdown=graceful` + 各フェーズ 20s。
 - 圧縮: `server.compression.enabled=true`。
+- リバースプロキシ: prod で `server.forward-headers-strategy=framework`（ALB 等の X-Forwarded-* を信頼）。
 - Compose 運用: `restart: unless-stopped` とログローテを設定済み。
 
 ### .env の利用

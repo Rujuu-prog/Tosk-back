@@ -174,3 +174,8 @@ tasks.named('check') {
             'jacocoTestReport' // レポート生成
     )
 }
+
+// Actuator /info にビルド情報を露出（version, time, commit 等）
+springBoot {
+    buildInfo()
+}

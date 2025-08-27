@@ -17,6 +17,7 @@ build
 build/reports
 doc
 qodana.yaml
+.github
 
 # Secrets (example)
 .env
