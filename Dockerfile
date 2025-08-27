@@ -21,11 +21,14 @@ ENV TZ=UTC \
     JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -Dfile.encoding=UTF-8 -Duser.timezone=UTC"
 
 WORKDIR /app
-# install curl for container healthcheck
+# install curl for container healthcheck and create non-root user
 RUN apt-get update -y \
-  && apt-get install -y --no-install-recommends curl \
-  && rm -rf /var/lib/apt/lists/*
+  && apt-get install -y --no-install-recommends curl ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && useradd -r -u 10001 -m -d /home/appuser -s /usr/sbin/nologin appuser
 COPY --from=build /app/build/libs/*.jar /app/app.jar
 
 EXPOSE 8080
+RUN chown -R appuser:appuser /app
+USER appuser
 ENTRYPOINT ["java","-jar","/app/app.jar"]

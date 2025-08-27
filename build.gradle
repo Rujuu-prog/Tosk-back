@@ -36,6 +36,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly   'org.postgresql:postgresql'
@@ -55,6 +56,19 @@ dependencies {
     // ---- SpotBugs 実行クラスパスを明示
     spotbugs 'com.github.spotbugs:spotbugs:4.9.3'
     spotbugs 'org.apache.commons:commons-lang3:3.17.0'
+}
+
+// 開発用クラスパス（DevTools）
+configurations {
+    developmentOnly
+    runtimeClasspath {
+        extendsFrom developmentOnly
+    }
+}
+
+dependencies {
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
 }
 
 // spotbugs 構成だけは依存バージョンを強制して安定化

@@ -58,6 +58,7 @@ Todo + SNS アプリケーションのバックエンド。
 
 * 設計概要: [doc/architecture/overview.md](doc/architecture/overview.md)
 * コーディングガイド: [doc/conventions/backend_coding_style.md](doc/conventions/backend_coding_style.md)
+* DB 設計: [doc/database/README.md](doc/database/README.md)
 
 ---
 
@@ -94,8 +95,17 @@ docker compose down
 ### Actuator / Healthcheck
 
 - 依存: `spring-boot-starter-actuator` を追加済み。
-- 有効化: `src/main/resources/application.yml` で `health,info` を公開。
-- ヘルスURL: `GET http://localhost:8080/actuator/health`（コンテナ内から curl でヘルスチェック済み）。
+- 有効化: `src/main/resources/application.yml` で `health,info` を公開。`probes.enabled=true` により `/actuator/health/liveness` `/readiness` も有効。
+- ヘルスURL: `GET http://localhost:8080/actuator/health/readiness`（compose のヘルスチェックで使用）。
+
+### 運用
+
+- ログ: prod プロファイルは JSON 出力（logstash 互換）、開発は可読フォーマット。
+- リクエストID: `X-Request-Id` を受理/生成してレスポンスに反映。ログの `rid`/`mdc.requestId` に出力。
+- メトリクス: `/actuator/prometheus` を公開（prod/docker）。Micrometer + Prometheus registry を同梱。
+- 停止: `server.shutdown=graceful` + 各フェーズ 20s。
+- 圧縮: `server.compression.enabled=true`。
+- Compose 運用: `restart: unless-stopped` とログローテを設定済み。
 
 ### .env の利用
 
@@ -108,3 +118,33 @@ docker compose down
   - `SPRING_DATASOURCE_USERNAME=tosk`
   - `SPRING_DATASOURCE_PASSWORD=tosk`
   - `SPRING_PROFILES_ACTIVE=docker`
+  - サンプルは `.env.example` を参照
+
+### Seed データ（docker プロファイルのみ適用）
+
+- 開発用 seed は `src/main/resources/db/dev/R__seed.sql` に配置。`application-docker.yml` により docker プロファイルでのみ適用されます。
+- 追加されるデータ例:
+  - ユーザー: `admin@tosk.local`（Administrator）, `alice@tosk.local`（Alice）
+  - チーム: `Core Team`（admin が owner）
+  - メンバーシップ: admin=leader, alice=member
+  - 例タスク/コメント/いいね/通知
+  - すべて冪等に挿入されます。
+---
+
+## 開発/本番プロファイルの分離
+
+### 開発（ホットリロード）
+
+- 依存: `spring-boot-devtools` を導入済み（developmentOnly）。
+- ホストで実行:
+  - `SPRING_PROFILES_ACTIVE=local ./gradlew bootRun`
+  - DB は `localhost:5432` の Postgres（compose の `db`）に接続。
+- Docker で実行（ソースマウント + bootRun）:
+  - `docker compose -f docker-compose.yml -f docker-compose.dev.yml up app-dev`
+  - 保存→ビルド（IDE自動ビルド）で再起動されます。JDWP は `:5005`。
+
+### 本番（コンテナで jar 実行）
+
+- `docker compose up -d --build`
+- プロファイル: `SPRING_PROFILES_ACTIVE=prod` を本番で設定推奨（`application-prod.yml` 適用、Actuator公開を縮小）。
+- 例: `SPRING_PROFILES_ACTIVE=prod docker compose up -d --build`
