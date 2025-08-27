@@ -58,3 +58,53 @@ Todo + SNS アプリケーションのバックエンド。
 
 * 設計概要: [doc/architecture/overview.md](doc/architecture/overview.md)
 * コーディングガイド: [doc/conventions/backend_coding_style.md](doc/conventions/backend_coding_style.md)
+
+---
+
+## Docker で実行（アプリ + DB）
+
+前提: Docker と Docker Compose が利用可能であること（Apple Silicon も対応）。
+
+1) 起動
+
+```sh
+docker compose up -d --build
+```
+
+2) ログ確認 / 停止
+
+```sh
+docker compose logs -f app
+docker compose down
+```
+
+3) 接続情報（コンテナ間）
+
+- DB: `postgres:16-alpine`
+- 接続URL: `jdbc:postgresql://db:5432/tosk`
+- ユーザー/パス: `tosk` / `tosk`
+- アプリはポート `8080` で待受（ホスト側 `http://localhost:8080`）
+
+4) メモ
+
+- `SPRING_DATASOURCE_*` は `docker-compose.yml` の環境変数で注入しています。
+- DB 永続化はボリューム `pgdata` に保存されます。
+- Flyway は導入済みです。マイグレーションは `src/main/resources/db/migration` に配置してください（例: `V1__init.sql`）。
+
+### Actuator / Healthcheck
+
+- 依存: `spring-boot-starter-actuator` を追加済み。
+- 有効化: `src/main/resources/application.yml` で `health,info` を公開。
+- ヘルスURL: `GET http://localhost:8080/actuator/health`（コンテナ内から curl でヘルスチェック済み）。
+
+### .env の利用
+
+- ルートに `.env` を追加（VCS除外）。`docker compose` 実行時に読み込まれ、DB/アプリの接続設定を注入します。
+- 例（同梱の `.env`）:
+  - `POSTGRES_DB=tosk`
+  - `POSTGRES_USER=tosk`
+  - `POSTGRES_PASSWORD=tosk`
+  - `SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/tosk`
+  - `SPRING_DATASOURCE_USERNAME=tosk`
+  - `SPRING_DATASOURCE_PASSWORD=tosk`
+  - `SPRING_PROFILES_ACTIVE=docker`

@@ -1,0 +1,22 @@
+# Gradle & build outputs
+.gradle
+build
+
+# IDE
+.idea
+.vscode
+
+# VCS
+.git
+.gitignore
+
+# OS/Editor
+.DS_Store
+
+# Reports & docs (不要であれば除外)
+build/reports
+doc
+qodana.yaml
+
+# Secrets (example)
+.env
