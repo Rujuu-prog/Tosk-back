@@ -17,7 +17,7 @@ RUN ./gradlew --no-daemon clean bootJar \
 
 # Runtime stage (JRE only)
 FROM eclipse-temurin:21-jre-jammy AS runtime
-LABEL org.opencontainers.image.source="https://github.com/your-org/your-repo" \
+LABEL org.opencontainers.image.source="https://github.com/Rujuu-prog/Tosk-back" \
       org.opencontainers.image.title="Tosk Backend" \
       org.opencontainers.image.description="Spring Boot backend for Tosk" \
       org.opencontainers.image.licenses="Proprietary"

@@ -52,6 +52,7 @@ dependencies {
 
     // ---- Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'com.h2database:h2'
 
     // ---- SpotBugs 実行クラスパスを明示
     spotbugs 'com.github.spotbugs:spotbugs:4.9.3'
@@ -96,14 +97,19 @@ checkstyle {
 // ---- PMD ----
 pmd {
     toolVersion = '7.0.0'
-    ruleSets = [
-            'category/java/bestpractices.xml',
-            'category/java/errorprone.xml',
-            'category/java/performance.xml',
-            'category/java/codestyle.xml'
-    ]
+    // Use custom rulesets (main/test) to tune noise vs. signal
+    ruleSetFiles = files("$rootDir/config/pmd/pmd-rules-main.xml")
+    ruleSets = []
     // 初期構築期に落ちにくくしたいなら ↓を true に変更（違反があっても失敗にしない）
     ignoreFailures = false
+    consoleOutput = true
+}
+
+// テスト用は軽量ルールセット（assert強制など一部除外）
+tasks.named('pmdTest') {
+    ruleSetFiles = files("$rootDir/config/pmd/pmd-rules-test.xml")
+    ruleSets = []
+    enabled = true
 }
 
 // ---- SpotBugs ----
