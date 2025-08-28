@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import jakarta.servlet.ServletException;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -86,8 +87,7 @@ class RequestIdFilterTest {
     RequestIdFilter filter = new RequestIdFilter(HEADER_REQ_ID);
     MockHttpServletRequest req = new MockHttpServletRequest();
     MockHttpServletResponse res = new MockHttpServletResponse();
-    final java.util.concurrent.atomic.AtomicReference<String> seen =
-        new java.util.concurrent.atomic.AtomicReference<>();
+    final AtomicReference<String> seen = new AtomicReference<>();
     filter.doFilter(
         req, res, (request, response) -> seen.set(org.slf4j.MDC.get(RequestIdFilter.MDC_KEY)));
     assertThat(seen.get()).isNotBlank();
@@ -100,8 +100,7 @@ class RequestIdFilterTest {
     MockHttpServletRequest req = new MockHttpServletRequest();
     req.addHeader(HEADER_REQ_ID, SAMPLE_ID);
     MockHttpServletResponse res = new MockHttpServletResponse();
-    final java.util.concurrent.atomic.AtomicReference<String> seen =
-        new java.util.concurrent.atomic.AtomicReference<>();
+    final AtomicReference<String> seen = new AtomicReference<>();
     filter.doFilter(
         req, res, (request, response) -> seen.set(org.slf4j.MDC.get(RequestIdFilter.MDC_KEY)));
     assertThat(seen.get()).isEqualTo(SAMPLE_ID);
