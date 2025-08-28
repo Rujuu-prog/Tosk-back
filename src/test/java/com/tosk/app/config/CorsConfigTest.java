@@ -19,6 +19,7 @@ class CorsConfigTest {
   private static final String HEADER_AC_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
 
   @Test
+  // ローカルホストOriginのプリフライトでAccess-Control-Allow-Originが返ることを検証する。
   void allowsLocalhostOrigin_allowsOriginHeader() throws ServletException, IOException {
     CorsConfig cfg = new CorsConfig("");
     CorsFilter filter = cfg.corsFilterForDev();
@@ -36,6 +37,7 @@ class CorsConfigTest {
   }
 
   @Test
+  // ローカルホストOriginでVaryヘッダにOriginが含まれることを検証する。
   void allowsLocalhostOrigin_setsVaryHeader() throws ServletException, IOException {
     CorsConfig cfg = new CorsConfig("");
     CorsFilter filter = cfg.corsFilterForDev();
@@ -53,6 +55,7 @@ class CorsConfigTest {
   }
 
   @Test
+  // プロパティ指定の許可OriginでAccess-Control-Allow-Originが返ることを検証する。
   void propertyDrivenOrigin_allowsOriginHeader() throws ServletException, IOException {
     CorsConfig cfg = new CorsConfig("http://foo.example:8080");
     CorsFilter filter = cfg.corsFilterForDev();
@@ -70,6 +73,7 @@ class CorsConfigTest {
   }
 
   @Test
+  // 許可Originに対し認証情報許可ヘッダが付与されること（Allow-Credentials=true）を検証する。
   void propertyDrivenOrigin_allowsCredentials() throws ServletException, IOException {
     CorsConfig cfg = new CorsConfig("http://bar.example");
     CorsFilter filter = cfg.corsFilterForDev();
@@ -87,6 +91,7 @@ class CorsConfigTest {
   }
 
   @Test
+  // 非許可OriginではAccess-Control-Allow-Originが付与されないことを検証する。
   void disallowedOrigin_doesNotSetAllowOrigin() throws ServletException, IOException {
     CorsConfig cfg = new CorsConfig("http://foo.example");
     CorsFilter filter = cfg.corsFilterForDev();
@@ -104,6 +109,7 @@ class CorsConfigTest {
   }
 
   @Test
+  // 複数許可設定時にa.exampleが許可されることを検証する。
   void multipleOrigins_allowA() throws ServletException, IOException {
     CorsConfig cfg = new CorsConfig("http://a.example,http://b.example");
     CorsFilter filter = cfg.corsFilterForDev();
@@ -119,6 +125,7 @@ class CorsConfigTest {
   }
 
   @Test
+  // 複数許可設定時にb.exampleが許可されることを検証する。
   void multipleOrigins_allowB() throws ServletException, IOException {
     CorsConfig cfg = new CorsConfig("http://a.example,http://b.example");
     CorsFilter filter = cfg.corsFilterForDev();

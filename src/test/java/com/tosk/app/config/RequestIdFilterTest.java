@@ -16,6 +16,7 @@ class RequestIdFilterTest {
   private static final String SAMPLE_ID = "abc-123";
 
   @Test
+  // ヘッダ未指定時に新規リクエストIDが生成されレスポンスヘッダに設定されることを検証する。
   void generatesRequestIdWhenMissing_setsHeader() throws ServletException, IOException {
     RequestIdFilter filter = new RequestIdFilter(HEADER_REQ_ID);
     MockHttpServletRequest req = new MockHttpServletRequest();
@@ -25,6 +26,7 @@ class RequestIdFilterTest {
   }
 
   @Test
+  // ヘッダ未指定でもフィルタチェーンが継続実行されることを検証する。
   void generatesRequestIdWhenMissing_proceedsFilterChain() throws ServletException, IOException {
     RequestIdFilter filter = new RequestIdFilter(HEADER_REQ_ID);
     MockHttpServletRequest req = new MockHttpServletRequest();
@@ -35,6 +37,7 @@ class RequestIdFilterTest {
   }
 
   @Test
+  // 指定されたリクエストIDがそのままレスポンスヘッダに反映されることを検証する。
   void keepsProvidedRequestId() throws ServletException, IOException {
     RequestIdFilter filter = new RequestIdFilter(HEADER_REQ_ID);
     MockHttpServletRequest req = new MockHttpServletRequest();
@@ -47,6 +50,7 @@ class RequestIdFilterTest {
   }
 
   @Test
+  // 空白のみのヘッダは未指定扱いとなり新規IDが設定されることを検証する。
   void blankHeaderGeneratesNewId_setsHeader() throws ServletException, IOException {
     RequestIdFilter filter = new RequestIdFilter(HEADER_REQ_ID);
     MockHttpServletRequest req = new MockHttpServletRequest();
@@ -57,6 +61,7 @@ class RequestIdFilterTest {
   }
 
   @Test
+  // 処理後にMDCのrequestIdが必ずクリアされることを検証する。
   void filterClearsMdcAfterProcessing() throws ServletException, IOException {
     RequestIdFilter filter = new RequestIdFilter(HEADER_REQ_ID);
     MockHttpServletRequest req = new MockHttpServletRequest();
@@ -66,6 +71,7 @@ class RequestIdFilterTest {
   }
 
   @Test
+  // カスタムヘッダ名が使用され値が設定されることを検証する。
   void customHeaderName_isUsed() throws ServletException, IOException {
     RequestIdFilter filter = new RequestIdFilter("X-Custom-ReqId");
     MockHttpServletRequest req = new MockHttpServletRequest();
@@ -75,29 +81,29 @@ class RequestIdFilterTest {
   }
 
   @Test
+  // フィルタチェーン実行中はMDCにrequestIdが格納されていることを検証する。
   void mdcIsPopulatedDuringChain() throws ServletException, IOException {
     RequestIdFilter filter = new RequestIdFilter(HEADER_REQ_ID);
     MockHttpServletRequest req = new MockHttpServletRequest();
     MockHttpServletResponse res = new MockHttpServletResponse();
-    final java.util.concurrent.atomic.AtomicReference<String> seen = new java.util.concurrent.atomic.AtomicReference<>();
+    final java.util.concurrent.atomic.AtomicReference<String> seen =
+        new java.util.concurrent.atomic.AtomicReference<>();
     filter.doFilter(
-        req,
-        res,
-        (request, response) -> seen.set(org.slf4j.MDC.get(RequestIdFilter.MDC_KEY)));
+        req, res, (request, response) -> seen.set(org.slf4j.MDC.get(RequestIdFilter.MDC_KEY)));
     assertThat(seen.get()).isNotBlank();
   }
 
   @Test
+  // 提供されたリクエストIDがMDCにも伝播することを検証する。
   void providedHeaderPropagatesToMdc() throws ServletException, IOException {
     RequestIdFilter filter = new RequestIdFilter(HEADER_REQ_ID);
     MockHttpServletRequest req = new MockHttpServletRequest();
     req.addHeader(HEADER_REQ_ID, SAMPLE_ID);
     MockHttpServletResponse res = new MockHttpServletResponse();
-    final java.util.concurrent.atomic.AtomicReference<String> seen = new java.util.concurrent.atomic.AtomicReference<>();
+    final java.util.concurrent.atomic.AtomicReference<String> seen =
+        new java.util.concurrent.atomic.AtomicReference<>();
     filter.doFilter(
-        req,
-        res,
-        (request, response) -> seen.set(org.slf4j.MDC.get(RequestIdFilter.MDC_KEY)));
+        req, res, (request, response) -> seen.set(org.slf4j.MDC.get(RequestIdFilter.MDC_KEY)));
     assertThat(seen.get()).isEqualTo(SAMPLE_ID);
   }
 }

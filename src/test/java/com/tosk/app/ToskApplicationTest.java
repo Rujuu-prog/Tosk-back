@@ -9,6 +9,7 @@ import org.springframework.test.context.ActiveProfiles;
 class ToskApplicationTest {
 
   @Test
+  // アプリケーションコンテキストが正常に起動できることを検証する。
   void contextLoads() {
     // If the application context fails to start, this test will fail.
   }
