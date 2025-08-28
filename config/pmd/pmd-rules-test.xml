@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="tosk-test"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.github.io/pmd-7.0.0/pmd-7.0.0.xsd">
+
+  <!-- Tests: keep signal high, allow contextLoads without asserts, relax codestyle/perf -->
+  <description>PMD rules for test sources</description>
+
+  <rule ref="category/java/bestpractices.xml">
+    <exclude name="JUnitTestsShouldIncludeAssert"/>
+  </rule>
+  <rule ref="category/java/errorprone.xml"/>
+
+</ruleset>
+

@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tosk-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tosk}
+      POSTGRES_USER: ${POSTGRES_USER:-tosk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tosk}
+      TZ: UTC
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "tosk"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tosk-app
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:- -XX:MaxRAMPercentage=75 -Duser.timezone=UTC -Dfile.encoding=UTF-8}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 15
+      start_period: 20s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  pgdata:

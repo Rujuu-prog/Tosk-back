@@ -2,7 +2,7 @@ import com.github.spotbugs.snom.Effort
 import com.github.spotbugs.snom.Confidence
 
 plugins {
-    id 'org.springframework.boot' version '3.1.2'
+    id 'org.springframework.boot' version '3.3.3'
     id 'io.spring.dependency-management' version '1.1.0'
     id 'java'
 
@@ -35,10 +35,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly   'org.postgresql:postgresql'
 
-    // ---- OpenAPI (Boot 3系安定ライン)
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.11'
+    // ---- OpenAPI (Spring Boot 3.3.x 対応)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
 
     // ---- Lombok
     compileOnly         'org.projectlombok:lombok'
@@ -48,10 +52,24 @@ dependencies {
 
     // ---- Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'com.h2database:h2'
 
     // ---- SpotBugs 実行クラスパスを明示
     spotbugs 'com.github.spotbugs:spotbugs:4.9.3'
     spotbugs 'org.apache.commons:commons-lang3:3.17.0'
+}
+
+// 開発用クラスパス（DevTools）
+configurations {
+    developmentOnly
+    runtimeClasspath {
+        extendsFrom developmentOnly
+    }
+}
+
+dependencies {
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
 }
 
 // spotbugs 構成だけは依存バージョンを強制して安定化
@@ -79,14 +97,19 @@ checkstyle {
 // ---- PMD ----
 pmd {
     toolVersion = '7.0.0'
-    ruleSets = [
-            'category/java/bestpractices.xml',
-            'category/java/errorprone.xml',
-            'category/java/performance.xml',
-            'category/java/codestyle.xml'
-    ]
+    // Use custom rulesets (main/test) to tune noise vs. signal
+    ruleSetFiles = files("$rootDir/config/pmd/pmd-rules-main.xml")
+    ruleSets = []
     // 初期構築期に落ちにくくしたいなら ↓を true に変更（違反があっても失敗にしない）
     ignoreFailures = false
+    consoleOutput = true
+}
+
+// テスト用は軽量ルールセット（assert強制など一部除外）
+tasks.named('pmdTest') {
+    ruleSetFiles = files("$rootDir/config/pmd/pmd-rules-test.xml")
+    ruleSets = []
+    enabled = true
 }
 
 // ---- SpotBugs ----
@@ -156,4 +179,9 @@ tasks.named('check') {
             'jacocoTestCoverageVerification',
             'jacocoTestReport' // レポート生成
     )
+}
+
+// Actuator /info にビルド情報を露出（version, time, commit 等）
+springBoot {
+    buildInfo()
 }

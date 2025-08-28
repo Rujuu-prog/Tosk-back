@@ -1,0 +1,37 @@
+server:
+  port: 8080
+  shutdown: graceful
+  compression:
+    enabled: true
+    min-response-size: 1KB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  metrics:
+    tags:
+      application: Tosk-backend
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/tosk}
+    username: ${SPRING_DATASOURCE_USERNAME:tosk}
+    password: ${SPRING_DATASOURCE_PASSWORD:tosk}
+  jpa:
+    hibernate:
+      ddl-auto: none
+  jackson:
+    time-zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
