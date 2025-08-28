@@ -14,13 +14,13 @@ import org.springframework.web.filter.CorsFilter;
 @Configuration
 public class CorsConfig {
 
-  private final List<String> allowedOriginPatterns;
+  private final List<String> allowedOrigins;
 
   public CorsConfig(@Value("${app.cors.allowed-origins:}") final String allowedOrigins) {
     if (allowedOrigins == null || allowedOrigins.isBlank()) {
-      this.allowedOriginPatterns = List.of("http://localhost:*", "http://127.0.0.1:*");
+      this.allowedOrigins = List.of("http://localhost:*", "http://127.0.0.1:*");
     } else {
-      this.allowedOriginPatterns =
+      this.allowedOrigins =
           Arrays.stream(allowedOrigins.split(","))
               .map(String::trim)
               .filter(s -> !s.isEmpty())
@@ -32,7 +32,7 @@ public class CorsConfig {
   @Profile({"local", "docker"})
   public CorsFilter corsFilterForDev() {
     final CorsConfiguration cfg = new CorsConfiguration();
-    for (final String pattern : allowedOriginPatterns) {
+    for (final String pattern : allowedOrigins) {
       cfg.addAllowedOriginPattern(pattern);
     }
     cfg.addAllowedHeader("*");
