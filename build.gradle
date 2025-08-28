@@ -12,6 +12,8 @@ plugins {
     id 'jacoco'
     id 'com.github.spotbugs' version '6.2.5'
     id 'com.diffplug.spotless' version '6.25.0'
+    // ---- OpenAPI Generator ----
+    id 'org.openapi.generator' version '7.8.0'
 }
 
 group = 'com.tosk.app'
@@ -43,6 +45,8 @@ dependencies {
 
     // ---- OpenAPI (Spring Boot 3.3.x 対応)
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+    // OpenAPI models nullable support (JsonNullable)
+    implementation 'org.openapitools:jackson-databind-nullable:0.2.6'
 
     // ---- Lombok
     compileOnly         'org.projectlombok:lombok'
@@ -93,6 +97,14 @@ checkstyle {
     toolVersion = '10.17.0'
     config = resources.text.fromFile("$rootDir/config/checkstyle/checkstyle.xml")
 }
+// 生成コードはチェック対象外にする
+tasks.withType(Checkstyle).configureEach {
+    exclude 'generated/**'
+}
+// checkstyleMain は手動で src/main/java のみを対象にする（生成コードを除外）
+tasks.named('checkstyleMain') {
+    source = fileTree(dir: "$rootDir/src/main/java")
+}
 
 // ---- PMD ----
 pmd {
@@ -103,6 +115,10 @@ pmd {
     // 初期構築期に落ちにくくしたいなら ↓を true に変更（違反があっても失敗にしない）
     ignoreFailures = false
     consoleOutput = true
+}
+// 生成コードはPMD対象外
+tasks.withType(Pmd).configureEach {
+    exclude '**/generated/**'
 }
 
 // テスト用は軽量ルールセット（assert強制など一部除外）
@@ -129,6 +145,12 @@ tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
     }
     // 初期は落ちにくくしたいなら ↓を true に（違反があっても失敗しない）
     ignoreFailures = false
+    // 生成コードは対象外（パッケージで除外）
+    excludeFilter = file("$rootDir/config/spotbugs/exclude-generated.xml")
+}
+tasks.named('spotbugsMain') {
+    classes = files(fileTree(dir: "$buildDir/classes/java/main", exclude: ['**/com/tosk/app/generated/**']))
+    dependsOn 'openApiGenerateBackend', 'compileJava'
 }
 
 // ---- JaCoCo ----
@@ -145,6 +167,9 @@ jacocoTestReport {
         html.required.set(true)
         csv.required.set(false)
     }
+    // 生成コードはカバレッジ対象外
+    def generatedExclusions = ['**/com/tosk/app/generated/**']
+    classDirectories.setFrom(files(classDirectories.files.collect { fileTree(dir: it, exclude: generatedExclusions) }))
 }
 
 jacocoTestCoverageVerification {
@@ -164,6 +189,9 @@ jacocoTestCoverageVerification {
             }
         }
     }
+    // 生成コードは判定対象外
+    def generatedExclusions = ['**/com/tosk/app/generated/**']
+    classDirectories.setFrom(files(classDirectories.files.collect { fileTree(dir: it, exclude: generatedExclusions) }))
 }
 
 // JaCoCoは verify 前にテスト＆レポートを作らせる
@@ -184,4 +212,83 @@ tasks.named('check') {
 // Actuator /info にビルド情報を露出（version, time, commit 等）
 springBoot {
     buildInfo()
+}
+
+// ---- OpenAPI code generation ----
+def openApiSpec = "$rootDir/src/main/resources/openapi/api_internal.yaml"
+
+tasks.register('openApiGenerateBackend', org.openapitools.generator.gradle.plugin.tasks.GenerateTask) {
+    group = 'openapi'
+    description = 'Generate Spring interfaces and models from OpenAPI'
+    generatorName = 'spring'
+    inputSpec = openApiSpec
+    outputDir = "$rootDir/generated/backend-openapi"
+    apiPackage = 'com.tosk.app.generated.api'
+    modelPackage = 'com.tosk.app.generated.model'
+    invokerPackage = 'com.tosk.app.generated.invoker'
+    configOptions = [
+            useSpringBoot3: 'true',
+            interfaceOnly : 'true',
+            // useTags    : 'true', // 現状タグ未定義エンドポイントが多いためオフにしてまとめる
+            dateLibrary   : 'java8',
+            library       : 'spring-boot'
+    ]
+    additionalProperties = [
+            debugOpenAPI   : 'true',
+            debugModels    : 'true',
+            debugOperations: 'true'
+    ]
+    globalProperties = [
+            apis            : '',
+            models          : '',
+            supportingFiles : '',
+            apiDocs         : 'false',
+            modelDocs       : 'false',
+            apiTests        : 'false',
+            modelTests      : 'false'
+    ]
+
+    cleanupOutput = true
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir "$rootDir/generated/backend-openapi/src/main/java"
+        }
+    }
+}
+
+tasks.named('compileJava') { dependsOn 'openApiGenerateBackend' }
+
+// Frontend TypeScript client (axios)
+tasks.register('openApiGenerateFrontend', org.openapitools.generator.gradle.plugin.tasks.GenerateTask) {
+    group = 'openapi'
+    description = 'Generate TypeScript Axios client from OpenAPI'
+    generatorName = 'typescript-axios'
+    inputSpec = openApiSpec
+    outputDir = "$rootDir/generated/frontend-openapi"
+    additionalProperties = [
+            supportsES6              : 'true',
+            useSingleRequestParameter: 'true',
+            modelPropertyNaming      : 'original',
+            enumPropertyNaming       : 'original',
+            npmName                  : 'tosk-openapi-client',
+            npmVersion               : '0.1.0'
+    ]
+    globalProperties = [
+            apis            : '',
+            models          : '',
+            supportingFiles : '',
+            apiDocs         : 'false',
+            modelDocs       : 'false',
+            apiTests        : 'false',
+            modelTests      : 'false'
+    ]
+    // 一部環境で生成後にディレクトリが消える事象があるため、クリーンは行わない
+    cleanupOutput = false
+}
+
+tasks.named('build') {
+    dependsOn 'openApiGenerateBackend'
 }

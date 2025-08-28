@@ -59,6 +59,7 @@ Todo + SNS アプリケーションのバックエンド。
 * 設計概要: [doc/architecture/overview.md](doc/architecture/overview.md)
 * コーディングガイド: [doc/conventions/backend_coding_style.md](doc/conventions/backend_coding_style.md)
 * DB 設計: [doc/database/README.md](doc/database/database_design.md)
+* リリース/バージョニング方針: [doc/spec/release/api_versioning_and_release.md](doc/spec/release/api_versioning_and_release.md)
 
 ---
 
@@ -150,3 +151,47 @@ docker compose down
 - `docker compose up -d --build`
 - プロファイル: `SPRING_PROFILES_ACTIVE=prod` を本番で設定推奨（`application-prod.yml` 適用、Actuator公開を縮小）。
 - 例: `SPRING_PROFILES_ACTIVE=prod docker compose up -d --build`
+
+---
+
+## OpenAPI コード生成（Backend/Frontend）
+
+OpenAPI 仕様（`src/main/resources/openapi/api_internal.yaml`）を原本として、バックエンド/フロントのコードを生成します。生成物はコミット対象です（ビルド時にも自動生成）。
+
+- バックエンド（Spring, interfaceOnly）
+  - 生成: `./gradlew openApiGenerateBackend`
+  - 出力: `generated/backend-openapi/`
+  - パッケージ: `com.tosk.app.generated.api` / `com.tosk.app.generated.model`
+  - 備考: 生成物はインタフェース/DTOのみ。実装は手書きで衝突回避。
+
+- フロント（TypeScript Axios クライアント）
+  - 本番運用では GitHub Packages に公開する private パッケージを利用する想定です。
+  - このリポでは開発用にローカル生成タスクのみ提供します（ビルドにはフックしません）。
+  - 生成: `./gradlew openApiGenerateFrontend`（出力: `generated/frontend-openapi/`）
+  - クライアント使用時のCookie送信例: `new Configuration({ baseOptions: { withCredentials: true } })`
+
+- 一括ビルドで自動生成: `./gradlew clean build`
+  - `build` 実行時にはバックエンド（Java）のみ自動生成します。
+  - フロント（TSクライアント）はCIでパッケージ化・公開します。
+
+運用ルール:
+- OpenAPI を更新した PR では生成物も更新してコミットする。
+- 生成コードは直接編集しない（再生成で上書きされます）。
+
+### GitHub Packages（TSクライアント配布）
+
+- CIが `src/main/resources/openapi/**` の変更を検知すると、`generated/frontend-openapi` を生成し、GitHub Packages に `@<OWNER>/tosk-openapi-client` として公開します。
+- フロント側での導入例（Next.js リポジトリ側）:
+
+```sh
+# .npmrc（リポジトリ or ユーザー）
+@<OWNER>:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+
+# 依存追加
+npm i @<OWNER>/tosk-openapi-client
+# or
+yarn add @<OWNER>/tosk-openapi-client
+```
+
+- 注意: `<OWNER>` は GitHub の org/user 名に置き換えてください。`GITHUB_TOKEN` はリード権限を持つPATまたはActions Tokenを設定します。

@@ -50,16 +50,31 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: Login successful
+          description: Login successful. Issues JWT cookies.
+          headers:
+            Set-Cookie:
+              description: |
+                HttpOnly/Secure cookies will be set on success.
+                Examples:
+                - ACCESS_TOKEN=jwt...; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=1800
+                - REFRESH_TOKEN=jwt...; HttpOnly; Secure; SameSite=Strict; Path=/auth; Max-Age=1209600
+              schema:
+                type: string
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  accessToken:
+                  message:
                     type: string
         '400':
           description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized (invalid credentials)
           content:
             application/json:
               schema:
@@ -75,6 +90,7 @@ paths:
     get:
       summary: Get current user information
       security:
+        - cookieAuth: []
         - bearerAuth: []
       responses:
         '200':
@@ -102,10 +118,92 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      security:
+        - refreshCookieAuth: []
+      responses:
+        '200':
+          description: New token(s) issued via cookies
+          headers:
+            Set-Cookie:
+              description: |
+                Issues a new ACCESS_TOKEN and may rotate REFRESH_TOKEN.
+                Examples:
+                - ACCESS_TOKEN=jwt...; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=1800
+                - REFRESH_TOKEN=jwt...; HttpOnly; Secure; SameSite=Strict; Path=/auth; Max-Age=1209600
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Token reuse detected (session revoked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      summary: Logout and clear auth cookies
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cookies cleared via Set-Cookie with Max-Age=0
+          headers:
+            Set-Cookie:
+              description: |
+                Expires ACCESS_TOKEN and REFRESH_TOKEN cookies.
+                Examples:
+                - ACCESS_TOKEN=deleted; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0
+                - REFRESH_TOKEN=deleted; HttpOnly; Secure; SameSite=Strict; Path=/auth; Max-Age=0
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /users/me:
     get:
       summary: Get current user's profile
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       responses:
         '200':
@@ -130,6 +228,7 @@ paths:
     put:
       summary: Update current user's profile
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       requestBody:
         required: true
@@ -200,6 +299,7 @@ paths:
     post:
       summary: Create a new team
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       requestBody:
         required: true
@@ -267,6 +367,7 @@ paths:
     post:
       summary: Request to join a team
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: teamId
@@ -314,6 +415,7 @@ paths:
     post:
       summary: Approve a join request
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: teamId
@@ -361,6 +463,7 @@ paths:
     post:
       summary: Reject a join request
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: teamId
@@ -408,6 +511,7 @@ paths:
     post:
       summary: Create a new task
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       requestBody:
         required: true
@@ -444,6 +548,7 @@ paths:
     get:
       summary: List tasks
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: teamId
@@ -490,6 +595,7 @@ paths:
     get:
       summary: Get a task's details
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: taskId
@@ -521,6 +627,7 @@ paths:
     put:
       summary: Update a task
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: taskId
@@ -570,6 +677,7 @@ paths:
     delete:
       summary: Delete a task
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: taskId
@@ -613,6 +721,17 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: Bearer JWT authentication. Server allows small clock skew (~60s) during validation.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: ACCESS_TOKEN
+      description: HttpOnly/Secure cookie containing short-lived access JWT. Small clock skew (~60s) tolerated.
+    refreshCookieAuth:
+      type: apiKey
+      in: cookie
+      name: REFRESH_TOKEN
+      description: HttpOnly/Secure cookie containing long-lived refresh JWT. Small clock skew (~60s) tolerated.
 
   schemas:
     SignupRequest:

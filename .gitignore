@@ -62,3 +62,6 @@ bin/
 
 # Local overrides
 .env
+
+# Generated OpenAPI code (do not commit)
+generated/
