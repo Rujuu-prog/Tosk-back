@@ -58,7 +58,7 @@ Todo + SNS アプリケーションのバックエンド。
 
 * 設計概要: [doc/architecture/overview.md](doc/architecture/overview.md)
 * コーディングガイド: [doc/conventions/backend_coding_style.md](doc/conventions/backend_coding_style.md)
-* DB 設計: [doc/database/README.md](doc/database/README.md)
+* DB 設計: [doc/database/README.md](doc/database/database_design.md)
 
 ---
 
