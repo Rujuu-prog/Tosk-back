@@ -76,6 +76,10 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           VERSION: ${{ steps.ver.outputs.spec_version }}
 
+      - name: Install npm dependencies for generated client
+        working-directory: generated/frontend-openapi
+        run: npm ci
+
       - name: Authenticate to GitHub Packages
         run: |
           echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" > ~/.npmrc
