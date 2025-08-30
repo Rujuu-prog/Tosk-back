@@ -2,6 +2,8 @@
 
 本書は Web フロント（SPA/SSR）から本バックエンドの認証 API を安全に利用するための手順と実装例をまとめたものです。図は概念を掴むためのもの（Mermaid）。
 
+> **⚠️ 重要**: このドキュメントは実装と同期されており、エンドポイントパス、エラーコード、レスポンス形式はすべて実際のコードに基づいています。
+
 ## 1. 事前準備（設定）
 
 - バックエンド URL とフロントのオリジン（Origin）を決める
@@ -28,6 +30,12 @@
 
 Cookie に AT/RT（HttpOnly）を格納するため、必ず「クッキー同送」を有効化します。
 
+**重要**: デフォルトのCookie設定は以下の通りです：
+- Access Token: `AT` （Path: `/`）
+- Refresh Token: `RT` （Path: `/auth`）
+- SameSite: `Strict` （別ドメインの場合は `None` に変更必須）
+- Secure: `true` （HTTP環境では `false` に設定）
+
 例: Axios
 
 ```ts
@@ -51,9 +59,35 @@ await fetch(`${API_BASE}/api/auth/login`, {
 });
 ```
 
-## 3. フロー（サインアップ/ログイン/リフレッシュ/ログアウト）
+## 3. API エンドポイント一覧
 
-### 3.1 サインアップ
+### 認証フロー
+- `POST /api/auth/signup` - 新規登録
+- `POST /api/auth/login` - ログイン
+- `POST /api/auth/refresh` - トークンリフレッシュ
+- `POST /api/auth/logout` - ログアウト
+- `GET /api/auth/me` - 現在のユーザー情報取得
+
+### メール認証
+- `POST /api/auth/verification/start` - メール認証開始
+- `POST /api/auth/verification/confirm?token=...` - メール認証確定
+
+### パスワードリセット
+- `POST /api/auth/password/reset/start?email=...` - パスワードリセット開始
+- `POST /api/auth/password/reset/confirm?token=...&password=...` - パスワードリセット確定
+
+### セッション管理
+- `GET /api/auth/sessions` - セッション一覧
+- `GET /api/auth/sessions/{sid}` - セッション詳細
+- `DELETE /api/auth/sessions/{sid}` - 単一セッション削除
+- `DELETE /api/auth/sessions?keepCurrent=true|false` - 全セッション削除
+
+### JWKS
+- `GET /.well-known/jwks.json` - 公開鍵セット（ETag/Cache-Control 対応）
+
+## 4. フロー（サインアップ/ログイン/リフレッシュ/ログアウト）
+
+### 4.1 サインアップ
 
 ```mermaid
 sequenceDiagram
@@ -69,7 +103,7 @@ sequenceDiagram
 ポイント:
 - レスポンスで Set-Cookie される AT/RT は HttpOnly のため、JS から読めません。クッキーはブラウザが保持し、以後のリクエストで自動送信されます。
 
-### 3.2 ログイン
+### 4.2 ログイン
 
 ```mermaid
 sequenceDiagram
@@ -78,7 +112,7 @@ sequenceDiagram
   BE-->>FE: 200 + User(JSON)
 ```
 
-### 3.3 認証付き API 呼び出し
+### 4.3 認証付き API 呼び出し
 
 ```mermaid
 sequenceDiagram
@@ -86,7 +120,7 @@ sequenceDiagram
   BE-->>FE: 200 + User(JSON)
 ```
 
-### 3.4 AT 失効時のリフレッシュ
+### 4.4 AT 失効時のリフレッシュ
 
 ```mermaid
 sequenceDiagram
@@ -135,7 +169,7 @@ api.interceptors.response.use(
 注意（重要）:
 - RT Cookie Path は `app.jwt.refreshCookiePath` で変更できます。バックエンドのエンドポイントに合わせて設定してください。
 
-### 3.5 ログアウト
+### 4.5 ログアウト
 
 ```mermaid
 sequenceDiagram
@@ -144,14 +178,57 @@ sequenceDiagram
   BE-->>FE: 204 No Content
 ```
 
-## 4. メールフロー（任意）
+## 5. エラーハンドリング
+
+### エラーレスポンス形式
+
+すべてのエラーレスポンスは以下の形式で返されます：
+
+```json
+{
+  "errorCode": "ERROR_CODE_NAME",
+  "message": "Human readable error message"
+}
+```
+
+### 主要なエラーコード
+
+| エラーコード | HTTPステータス | 説明 |
+| ----------- | ------------- | ---- |
+| `VALIDATION_ERROR` | 400 | バリデーションエラー |
+| `AUTH_INVALID_CREDENTIALS` | 401 | 認証失敗（ログイン情報不正） |
+| `TOKEN_INVALID` | 401 | トークンが無効 |
+| `TOKEN_MISSING` | 401 | トークンが不足 |
+| `TOKEN_REUSE_DETECTED` | 409 | トークン再利用検知（セキュリティ違反） |
+| `AUTH_RATE_LIMIT` | 429 | レート制限に抵触 |
+| `NOT_FOUND` | 404 | リソースが見つからない |
+
+### エラーハンドリングの実装例
+
+```ts
+// 409 TOKEN_REUSE_DETECTED の場合は強制ログアウト
+if (error.response?.status === 409 && 
+    error.response?.data?.errorCode === 'TOKEN_REUSE_DETECTED') {
+  // 全セッションクリア + ログイン画面へ誘導
+  await forceLogout();
+  redirectToLogin();
+  return;
+}
+
+// 401の場合はリフレッシュ試行
+if (error.response?.status === 401) {
+  // リフレッシュロジック...
+}
+```
+
+## 6. メールフロー（任意）
 
 - メール認証開始: `POST /api/auth/verification/start`（AT 必須）
 - メール認証確定: `POST /api/auth/verification/confirm?token=...`
 - パスワードリセット開始: `POST /api/auth/password/reset/start?email=...`（常に 202）
 - パスワードリセット確定: `POST /api/auth/password/reset/confirm?token=...&password=...`
 
-### 4.1 パスワードリセット図解
+### 6.1 パスワードリセット図解
 
 ```mermaid
 sequenceDiagram
@@ -172,21 +249,21 @@ sequenceDiagram
   end
 ```
 
-## 5. セッション管理
+## 7. セッション管理
 
 - 一覧: `GET /api/auth/sessions`
 - 詳細: `GET /api/auth/sessions/{sid}`
 - 1件失効: `DELETE /api/auth/sessions/{sid}`
 - 全失効: `DELETE /api/auth/sessions?keepCurrent=true|false`
 
-## 6. よくある落とし穴
+## 8. よくある落とし穴
 
 - withCredentials/credentials=include を忘れる → Cookie が送受信されない
 - SameSite が `Strict` のまま別ドメインで使う → Cookie が送られない
 - Secure=false で `SameSite=None` を使う → ブラウザが拒否（`None` は Secure 必須）
 - RT の Cookie Path とエンドポイントパスが不一致 → RT が送られない（要プロキシまたはサーバ改善）
 
-## 7. 推奨プロキシ設定（例: nginx）
+## 9. 推奨プロキシ設定（例: nginx）
 
 ```nginx
 location /auth/ {
@@ -197,3 +274,23 @@ location /auth/ {
 ```
 
 フロントは `/auth/refresh` 等を呼び出し、ブラウザは Path=/auth の RT Cookie を送信します。
+
+## 10. セキュリティ考慮事項
+
+### レート制限
+- ログインエンドポイント（`POST /api/auth/login`）は IP + メールアドレスでレート制限されています
+- 制限に達すると `429 Too Many Requests` が返され、`AUTH_RATE_LIMIT` エラーコードが設定されます
+
+### トークンローテーション
+- リフレッシュトークンは使用のたびに新しいものに更新されます（ローテーション）
+- 古いリフレッシュトークンの再利用が検知されると、全セッションが無効化されます
+- この場合、`409 Conflict` で `TOKEN_REUSE_DETECTED` エラーが返されます
+
+### セッションベースの無効化
+- パスワード変更時、`tokenVersion` がインクリメントされ、既存の全トークンが無効化されます
+- セッション単位での無効化も可能です（`DELETE /api/auth/sessions/{sid}`）
+
+### JWKS キーローテーション
+- 公開鍵は `/.well-known/jwks.json` で提供され、ETag/Cache-Control でキャッシュされます
+- 複数の鍵を含む JWKS をサポートしており、鍵ローテーションに対応しています
+- アクティブな鍵は JWKS の最初の鍵として配置されます
