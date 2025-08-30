@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Tosk Internal API
   description: Internal API documentation for Tosk (Todo + SNS App)
-  version: "1.0.0"
+  version: "0.0.1"
 servers:
   - url: https://api.tosk.local/v1
     description: Local development server
