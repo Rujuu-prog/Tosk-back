@@ -6,12 +6,13 @@ on:
       - 'openapi-client-v*'
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,6 +63,9 @@ jobs:
 
       - name: Prepare package.json for GitHub Packages
         working-directory: generated/frontend-openapi
+        env:
+          OWNER: ${{ github.repository_owner }}
+          VERSION: ${{ steps.ver.outputs.spec_version }}
         run: |
           node -e '
             const fs=require("fs");
@@ -72,26 +76,46 @@ jobs:
             pj.version = process.env.VERSION;
             fs.writeFileSync("package.json", JSON.stringify(pj, null, 2));
           '
-        env:
-          OWNER: ${{ github.repository_owner }}
-          VERSION: ${{ steps.ver.outputs.spec_version }}
 
       - name: Generate package-lock for generated client (no scripts)
         working-directory: generated/frontend-openapi
         run: npm install --package-lock-only --ignore-scripts
 
-      - name: Install npm dependencies for generated client
+      - name: Install npm dependencies for generated client (ci)
         working-directory: generated/frontend-openapi
         run: npm ci
 
-      - name: Authenticate to GitHub Packages
-        run: |
-          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" > ~/.npmrc
+      - name: Authenticate to GitHub Packages (use PAT)
+        working-directory: generated/frontend-openapi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: |
+          # npm が参照しているユーザー設定ファイルがあるか確認し、あればそこへ書く
+          if [ -n "$NPM_CONFIG_USERCONFIG" ]; then
+            echo "@${{ github.repository_owner }}:registry=https://npm.pkg.github.com/" >> "$NPM_CONFIG_USERCONFIG"
+            echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> "$NPM_CONFIG_USERCONFIG"
+          else
+            echo "@${{ github.repository_owner }}:registry=https://npm.pkg.github.com/" >> $HOME/.npmrc
+            echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> $HOME/.npmrc
+          fi
+          # 認証確認（失敗してもパイプライン止めない場合は || true を付ける）
+          npm whoami --registry=https://npm.pkg.github.com || true
+
+      - name: Debug npm config (optional - remove in production)
+        working-directory: generated/frontend-openapi
+        run: |
+          echo "NPM_CONFIG_USERCONFIG=$NPM_CONFIG_USERCONFIG"
+          echo "HOME/.npmrc content:"
+          cat $HOME/.npmrc || true
+          if [ -n "$NPM_CONFIG_USERCONFIG" ]; then
+            echo "User config content:"
+            cat "$NPM_CONFIG_USERCONFIG" || true
+          fi
+          npm config ls -l
 
       - name: Publish package
         working-directory: generated/frontend-openapi
         env:
           DIST_TAG: ${{ contains(steps.ver.outputs.spec_version, '-') && 'next' || 'latest' }}
-        run: npm publish --access restricted --tag ${DIST_TAG}
+        run: |
+          npm publish --access restricted --tag ${DIST_TAG} --registry https://npm.pkg.github.com
