@@ -76,9 +76,9 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           VERSION: ${{ steps.ver.outputs.spec_version }}
 
-      - name: Generate package-lock for generated client
+      - name: Generate package-lock for generated client (no scripts)
         working-directory: generated/frontend-openapi
-        run: npm install --package-lock-only
+        run: npm install --package-lock-only --ignore-scripts
 
       - name: Install npm dependencies for generated client
         working-directory: generated/frontend-openapi
