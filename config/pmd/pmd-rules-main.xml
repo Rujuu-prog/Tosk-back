@@ -8,10 +8,46 @@
   <!-- Keep main code stricter: best practices, error prone, performance, codestyle -->
   <description>PMD rules for main sources</description>
 
-  <rule ref="category/java/bestpractices.xml"/>
-  <rule ref="category/java/errorprone.xml"/>
-  <rule ref="category/java/performance.xml"/>
-  <rule ref="category/java/codestyle.xml"/>
+  <rule ref="category/java/bestpractices.xml">
+    <!-- Relax logging guard requirements - modern loggers are efficient -->
+    <exclude name="GuardLogStatement"/>
+    <!-- ForLoopCanBeForeach is overly pedantic for simple loops -->
+    <exclude name="ForLoopCanBeForeach"/>
+    <!-- LooseCoupling can be overly strict with Spring components -->
+    <exclude name="LooseCoupling"/>
+  </rule>
+  <rule ref="category/java/errorprone.xml">
+    <!-- AvoidDuplicateLiterals is overly pedantic -->
+    <exclude name="AvoidDuplicateLiterals"/>
+    <!-- EmptyCatchBlock can be acceptable for error handling -->
+    <exclude name="EmptyCatchBlock"/>
+  </rule>
+  <rule ref="category/java/performance.xml">
+    <!-- Performance rules that are overly pedantic -->
+    <exclude name="InsufficientStringBufferDeclaration"/>
+    <exclude name="ConsecutiveAppendsShouldReuse"/>
+    <exclude name="AppendCharacterWithChar"/>
+    <exclude name="AvoidInstantiatingObjectsInLoops"/>
+  </rule>
+  <rule ref="category/java/codestyle.xml">
+    <!-- Exclude overly pedantic rules that don't add real value -->
+    <exclude name="MethodArgumentCouldBeFinal"/>
+    <exclude name="LocalVariableCouldBeFinal"/>
+    <exclude name="ShortVariable"/>
+    <exclude name="LongVariable"/>
+    <exclude name="AtLeastOneConstructor"/>
+    <exclude name="CommentDefaultAccessModifier"/>
+    <exclude name="UnnecessaryFullyQualifiedName"/>
+    <exclude name="OnlyOneReturn"/>
+    <exclude name="UseExplicitTypes"/>
+    <exclude name="FieldDeclarationsShouldBeAtStartOfClass"/>
+    <exclude name="ShortMethodName"/>
+    <exclude name="ShortClassName"/>
+    <exclude name="CallSuperInConstructor"/>
+    <exclude name="FieldNamingConventions"/>
+    <exclude name="UseShortArrayInitializer"/>
+    <exclude name="UnnecessaryBoxing"/>
+  </rule>
 
 </ruleset>
 

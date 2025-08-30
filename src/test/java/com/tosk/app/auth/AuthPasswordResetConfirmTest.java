@@ -28,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
       "spring.flyway.enabled=false"
     })
 class AuthPasswordResetConfirmTest {
+  private static final String RESET_EMAIL = "reset@example.com";
   @Autowired MockMvc mockMvc;
   @Autowired ObjectMapper om;
   @Autowired PasswordResetTokenRepository resetRepo;
@@ -37,7 +38,7 @@ class AuthPasswordResetConfirmTest {
   void passwordResetConfirmAllowsLoginWithNewPassword() throws Exception {
     SignupRequestDTO sr =
         SignupRequestDTO.builder()
-            .email("reset@example.com")
+            .email(RESET_EMAIL)
             .username("resetu")
             .displayName("Reset U")
             .password("password-OLD")
@@ -51,9 +52,9 @@ class AuthPasswordResetConfirmTest {
 
     // start reset
     mockMvc
-        .perform(post("/api/auth/password/reset/start").param("email", "reset@example.com"))
+        .perform(post("/api/auth/password/reset/start").param("email", RESET_EMAIL))
         .andExpect(status().isAccepted());
-    var user = userRepo.findByEmailIgnoreCase("reset@example.com").orElseThrow();
+    var user = userRepo.findByEmailIgnoreCase(RESET_EMAIL).orElseThrow();
     var token =
         resetRepo.findAll().stream()
             .filter(t -> t.getUserId().equals(user.getId()))
@@ -71,7 +72,7 @@ class AuthPasswordResetConfirmTest {
 
     // login with new password
     LoginRequestDTO lr =
-        LoginRequestDTO.builder().email("reset@example.com").password("password-NEW").build();
+        LoginRequestDTO.builder().email(RESET_EMAIL).password("password-NEW").build();
     mockMvc
         .perform(
             post("/api/auth/login")

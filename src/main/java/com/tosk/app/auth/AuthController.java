@@ -7,6 +7,7 @@ import com.tosk.app.auth.dto.UserResponseDTO;
 import com.tosk.app.security.CookieUtils;
 import com.tosk.app.security.JwtProperties;
 import com.tosk.app.security.JwtService;
+import com.tosk.app.security.LoginRateLimiter;
 import com.tosk.app.user.UserEntity;
 import com.tosk.app.user.UserRepository;
 import jakarta.servlet.http.Cookie;
@@ -14,36 +15,39 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.text.ParseException;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 @RestController
 @RequestMapping("/api/auth")
 @Validated
 public class AuthController {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
+  private static final String CLAIM_SID = "sid";
+  private static final String RESPONSE_STATUS = "status";
+  private static final String SET_COOKIE_HEADER = "Set-Cookie";
   private final AuthService authService;
   private final JwtService jwtService;
   private final JwtProperties props;
   private final UserRepository userRepository;
-  private final com.tosk.app.security.LoginRateLimiter loginRateLimiter;
+  private final LoginRateLimiter loginRateLimiter;
 
   public AuthController(
-      AuthService authService,
-      JwtService jwtService,
-      JwtProperties props,
-      UserRepository userRepository,
-      com.tosk.app.security.LoginRateLimiter loginRateLimiter) {
+      final AuthService authService,
+      final JwtService jwtService,
+      final JwtProperties props,
+      final UserRepository userRepository,
+      final LoginRateLimiter loginRateLimiter) {
     this.authService = authService;
     this.jwtService = jwtService;
     this.props = props;
@@ -54,8 +58,8 @@ public class AuthController {
   @PostMapping("/signup")
   public ResponseEntity<?> signup(
       @Valid @RequestBody SignupRequestDTO req,
-      HttpServletRequest httpReq,
-      HttpServletResponse res) {
+      final HttpServletRequest httpReq,
+      final HttpServletResponse res) {
     UserEntity u =
         authService.signup(
             req.getEmail(), req.getUsername(), req.getDisplayName(), req.getPassword());
@@ -70,11 +74,13 @@ public class AuthController {
   @PostMapping("/login")
   public ResponseEntity<?> login(
       @Valid @RequestBody LoginRequestDTO req,
-      HttpServletRequest httpReq,
-      HttpServletResponse res) {
+      final HttpServletRequest httpReq,
+      final HttpServletResponse res) {
     // レート制限
     String rateKey =
-        (req.getEmail() == null ? "" : req.getEmail().toLowerCase()) + "|" + clientIp(httpReq);
+        (req.getEmail() == null ? "" : req.getEmail().toLowerCase(Locale.ENGLISH))
+            + "|"
+            + clientIp(httpReq);
     loginRateLimiter.checkAndIncrement(rateKey);
     UserEntity u = authService.login(req.getEmail(), req.getPassword());
     String initialJti = UUID.randomUUID().toString();
@@ -101,7 +107,7 @@ public class AuthController {
     JwtService.ParsedJwt pj = jwtService.parseAndValidate(rt);
     JWTClaimsSet c = pj.claims();
     UUID uid = UUID.fromString((String) c.getClaim("uid"));
-    UUID sid = UUID.fromString((String) c.getClaim("sid"));
+    UUID sid = UUID.fromString((String) c.getClaim(CLAIM_SID));
     String jti = pj.jwt().getJWTClaimsSet().getJWTID();
     try {
       AuthService.RotationResult rr = authService.rotateOrReject(uid, sid, jti);
@@ -116,7 +122,7 @@ public class AuthController {
       u.setTokenVersion(ver);
       UserWithSession uw = new UserWithSession(u, rr.session().getId());
       setAuthCookies(response, uw, rr.newJti());
-      return ResponseEntity.ok(Map.of("status", "rotated"));
+      return ResponseEntity.ok(Map.of(RESPONSE_STATUS, "rotated"));
     } catch (com.tosk.app.common.TokenReuseDetectedException ex) {
       clearCookies(response);
       return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -147,10 +153,11 @@ public class AuthController {
         JwtService.ParsedJwt pj = jwtService.parseAndValidate(rt);
         JWTClaimsSet c = pj.claims();
         UUID uid = UUID.fromString((String) c.getClaim("uid"));
-        UUID sid = UUID.fromString((String) c.getClaim("sid"));
+        UUID sid = UUID.fromString((String) c.getClaim(CLAIM_SID));
         authService.revokeSession(uid, sid);
-      } catch (Exception ignore) {
+      } catch (Exception ex) {
         // 不正RTならそのままクッキー破棄
+        LOGGER.debug("Invalid refresh token during logout: {}", ex.getMessage());
       }
     }
     clearCookies(res);
@@ -201,8 +208,7 @@ public class AuthController {
   }
 
   @GetMapping("/sessions/{sid}")
-  public ResponseEntity<?> sessionDetail(
-      @org.springframework.web.bind.annotation.PathVariable("sid") UUID sid) {
+  public ResponseEntity<?> sessionDetail(@PathVariable("sid") UUID sid) {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth == null || auth.getPrincipal() == null) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -215,7 +221,7 @@ public class AuthController {
         .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
   }
 
-  @org.springframework.web.bind.annotation.DeleteMapping("/sessions")
+  @DeleteMapping("/sessions")
   public ResponseEntity<?> revokeAllSessions(
       @org.springframework.web.bind.annotation.RequestParam(value = "keepCurrent", required = false)
           Boolean keepCurrent,
@@ -231,7 +237,7 @@ public class AuthController {
       String at = extractCookie(req, props.getAccessCookie());
       if (at != null) {
         var pj = jwtService.parseAndValidate(at);
-        String sidStr = (String) pj.claims().getClaim("sid");
+        String sidStr = (String) pj.claims().getClaim(CLAIM_SID);
         if (sidStr != null) {
           keep = java.util.Optional.of(java.util.UUID.fromString(sidStr));
         }
@@ -265,8 +271,8 @@ public class AuthController {
             props.getCookieDomain(),
             props.getRefreshCookiePath());
     // SameSite を強制付与
-    res.addHeader("Set-Cookie", buildSetCookie(c1, props.getCookieSameSite()));
-    res.addHeader("Set-Cookie", buildSetCookie(c2, props.getCookieSameSite()));
+    res.addHeader(SET_COOKIE_HEADER, buildSetCookie(c1, props.getCookieSameSite()));
+    res.addHeader(SET_COOKIE_HEADER, buildSetCookie(c2, props.getCookieSameSite()));
   }
 
   private void clearCookies(HttpServletResponse res) {
@@ -290,11 +296,11 @@ public class AuthController {
             props.getCookieSameSite(),
             props.getCookieDomain(),
             props.getRefreshCookiePath());
-    res.addHeader("Set-Cookie", buildSetCookie(c1, props.getCookieSameSite()));
-    res.addHeader("Set-Cookie", buildSetCookie(c2, props.getCookieSameSite()));
+    res.addHeader(SET_COOKIE_HEADER, buildSetCookie(c1, props.getCookieSameSite()));
+    res.addHeader(SET_COOKIE_HEADER, buildSetCookie(c2, props.getCookieSameSite()));
   }
 
-  private static String buildSetCookie(Cookie c, String sameSite) {
+  static String buildSetCookie(Cookie c, String sameSite) {
     StringBuilder sb = new StringBuilder();
     sb.append(c.getName()).append("=").append(c.getValue() == null ? "" : c.getValue());
     sb.append("; Path=").append(c.getPath());
@@ -332,14 +338,17 @@ public class AuthController {
       return sessionId;
     }
 
+    @Override
     public UUID getId() {
       return delegate.getId();
     }
 
+    @Override
     public String getEmail() {
       return delegate.getEmail();
     }
 
+    @Override
     public Integer getTokenVersion() {
       return delegate.getTokenVersion();
     }
@@ -367,14 +376,14 @@ public class AuthController {
     }
     UUID uid = (UUID) auth.getPrincipal();
     authService.startEmailVerification(uid);
-    return ResponseEntity.accepted().body(Map.of("status", "verification_started"));
+    return ResponseEntity.accepted().body(Map.of(RESPONSE_STATUS, "verification_started"));
   }
 
   @PostMapping("/verification/confirm")
   public ResponseEntity<?> confirmVerification(@RequestParam("token") String token) {
     boolean ok = authService.confirmEmailVerification(token);
     return ok
-        ? ResponseEntity.ok(Map.of("status", "verified"))
+        ? ResponseEntity.ok(Map.of(RESPONSE_STATUS, "verified"))
         : ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(Map.of("error", "invalid_or_expired_token"));
   }
@@ -383,7 +392,7 @@ public class AuthController {
   public ResponseEntity<?> startPasswordReset(@RequestParam("email") String email) {
     // 常に202で応答（ユーザ存在の可否を秘匿）
     authService.startPasswordReset(email);
-    return ResponseEntity.accepted().body(Map.of("status", "reset_started"));
+    return ResponseEntity.accepted().body(Map.of(RESPONSE_STATUS, "reset_started"));
   }
 
   @PostMapping("/password/reset/confirm")
@@ -391,7 +400,7 @@ public class AuthController {
       @RequestParam("token") String token, @RequestParam("password") String password) {
     boolean ok = authService.confirmPasswordReset(token, password);
     return ok
-        ? ResponseEntity.ok(Map.of("status", "password_reset"))
+        ? ResponseEntity.ok(Map.of(RESPONSE_STATUS, "password_reset"))
         : ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(Map.of("error", "invalid_or_expired_token"));
   }

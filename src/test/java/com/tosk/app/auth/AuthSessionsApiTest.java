@@ -41,14 +41,12 @@ class AuthSessionsApiTest {
             .displayName("Sess")
             .password("password-1234")
             .build();
-    MvcResult signup =
-        mockMvc
-            .perform(
-                post("/api/auth/signup")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(om.writeValueAsString(sr)))
-            .andExpect(status().isCreated())
-            .andReturn();
+    mockMvc
+        .perform(
+            post("/api/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(om.writeValueAsString(sr)))
+        .andExpect(status().isCreated());
 
     // create another session (login) so that current remains valid after revoking the first
     var login =

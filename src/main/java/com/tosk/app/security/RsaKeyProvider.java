@@ -1,6 +1,7 @@
 package com.tosk.app.security;
 
 import com.nimbusds.jose.jwk.*;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -14,7 +15,7 @@ import java.util.*;
 import org.springframework.stereotype.Component;
 
 @Component
-public class RsaKeyProvider {
+public final class RsaKeyProvider {
   private final RSAPublicKey publicKey;
   private final RSAPrivateKey privateKey;
   private final String keyId;
@@ -25,7 +26,7 @@ public class RsaKeyProvider {
       String jwksB64 = System.getenv("APP_JWT_PRIVATE_JWKS_B64");
       if (jwksB64 != null && !jwksB64.isBlank()) {
         byte[] jsonBytes = Base64.getDecoder().decode(jwksB64);
-        String json = new String(jsonBytes);
+        String json = new String(jsonBytes, StandardCharsets.UTF_8);
         JWKSet privateSet = JWKSet.parse(json);
         List<JWK> keys = privateSet.getKeys();
         if (keys.isEmpty()) {
@@ -49,13 +50,15 @@ public class RsaKeyProvider {
         String pubPem = java.nio.file.Files.readString(java.nio.file.Path.of(pubPath));
         this.privateKey = (RSAPrivateKey) parsePrivateKeyFromPem(privPem);
         this.publicKey = (RSAPublicKey) parsePublicKeyFromPem(pubPem);
-        this.keyId = UUID.nameUUIDFromBytes(pubPem.getBytes()).toString();
+        this.keyId = UUID.nameUUIDFromBytes(pubPem.getBytes(StandardCharsets.UTF_8)).toString();
         RSAKey rsaKey = new RSAKey.Builder(this.publicKey).keyID(this.keyId).build();
         this.publicJwkSet = new JWKSet(rsaKey);
       } else if (props.getPrivateKeyPem() != null && props.getPublicKeyPem() != null) {
         this.privateKey = (RSAPrivateKey) parsePrivateKeyFromPem(props.getPrivateKeyPem());
         this.publicKey = (RSAPublicKey) parsePublicKeyFromPem(props.getPublicKeyPem());
-        this.keyId = UUID.nameUUIDFromBytes(props.getPublicKeyPem().getBytes()).toString();
+        this.keyId =
+            UUID.nameUUIDFromBytes(props.getPublicKeyPem().getBytes(StandardCharsets.UTF_8))
+                .toString();
         RSAKey rsaKey = new RSAKey.Builder(this.publicKey).keyID(this.keyId).build();
         this.publicJwkSet = new JWKSet(rsaKey);
       } else {

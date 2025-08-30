@@ -14,6 +14,7 @@ import org.springframework.web.client.RestTemplate;
 class ResendMailServiceRetryTest {
 
   static class FlakyRestTemplate extends RestTemplate {
+    private static final int FIRST_CALL = 1;
     int calls = 0;
 
     @Override
@@ -25,7 +26,7 @@ class ResendMailServiceRetryTest {
         Object... uriVariables)
         throws RestClientException {
       calls++;
-      if (calls == 1) {
+      if (calls == FIRST_CALL) {
         // first: non-2xx
         return new ResponseEntity<>(null, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
       }

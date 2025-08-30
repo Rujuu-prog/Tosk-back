@@ -50,7 +50,8 @@ public class JwksController {
         sb.append(String.format("%02x", b));
       }
       return '"' + sb.toString() + '"'; // quoted ETag
-    } catch (Exception e) {
+    } catch (com.fasterxml.jackson.core.JsonProcessingException
+        | java.security.NoSuchAlgorithmException e) {
       return null;
     }
   }

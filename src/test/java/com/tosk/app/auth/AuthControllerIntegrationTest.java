@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tosk.app.auth.dto.LoginRequestDTO;
 import com.tosk.app.auth.dto.SignupRequestDTO;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -51,7 +52,9 @@ class AuthControllerIntegrationTest {
             .andExpect(cookie().exists("RT"))
             .andReturn();
 
-    String atCookie = r1.getResponse().getCookie("AT").getValue();
+    Cookie atCookieObj = r1.getResponse().getCookie("AT");
+    assertThat(atCookieObj).isNotNull();
+    String atCookie = atCookieObj.getValue();
     assertThat(atCookie).isNotBlank();
 
     // me should be OK with AT cookie
@@ -94,14 +97,11 @@ class AuthControllerIntegrationTest {
     var oldRt = r1.getResponse().getCookie("RT");
 
     // first refresh rotates RT
-    MvcResult r2 =
-        mockMvc
-            .perform(post("/api/auth/refresh").cookie(oldRt))
-            .andExpect(status().isOk())
-            .andExpect(cookie().exists("RT"))
-            .andReturn();
+    mockMvc
+        .perform(post("/api/auth/refresh").cookie(oldRt))
+        .andExpect(status().isOk())
+        .andExpect(cookie().exists("RT"));
 
-    var newRt = r2.getResponse().getCookie("RT");
     // reuse the old RT should be rejected with 409
     mockMvc.perform(post("/api/auth/refresh").cookie(oldRt)).andExpect(status().isConflict());
   }

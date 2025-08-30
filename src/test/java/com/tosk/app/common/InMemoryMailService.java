@@ -21,7 +21,7 @@ public class InMemoryMailService implements MailService {
   }
 
   public List<Mail> getMails() {
-    return box;
+    return new ArrayList<>(box);
   }
 
   public void clear() {

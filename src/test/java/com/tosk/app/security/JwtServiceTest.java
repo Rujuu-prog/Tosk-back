@@ -30,12 +30,15 @@ class JwtServiceTest {
     u.setEmail("a@example.com");
     u.setTokenVersion(1);
     String at = jwtService.issueAccessToken(u);
-    assertNotNull(at);
+    assertNotNull(at, "Access token should not be null");
     JwtService.ParsedJwt pj = jwtService.parseAndValidate(at);
     JWTClaimsSet c = pj.claims();
-    assertEquals(props.getIssuer(), c.getIssuer());
-    assertTrue(c.getAudience().contains(props.getAudience()));
-    assertEquals("1", c.getClaim("ver").toString());
+    assertEquals(props.getIssuer(), c.getIssuer(), "Token issuer should match configured issuer");
+    assertTrue(
+        c.getAudience().contains(props.getAudience()),
+        "Token audience should contain configured audience");
+    assertEquals(
+        "1", c.getClaim("ver").toString(), "Token version should match user token version");
   }
 
   @Test

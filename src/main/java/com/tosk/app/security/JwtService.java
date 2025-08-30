@@ -99,7 +99,9 @@ public class JwtService {
     try {
       sigValid = jwt.verify(new RSASSAVerifier(keys.getPublicKey()));
     } catch (Exception e) {
-      throw new ParseException("署名検証失敗", 0);
+      ParseException pe = new ParseException("署名検証失敗", 0);
+      pe.initCause(e);
+      throw pe;
     }
     if (!sigValid) {
       throw new ParseException("署名不正", 0);
@@ -120,7 +122,7 @@ public class JwtService {
     return new ParsedJwt(jwt, c);
   }
 
-  public static record ParsedJwt(SignedJWT jwt, JWTClaimsSet claims) {}
+  public record ParsedJwt(SignedJWT jwt, JWTClaimsSet claims) {}
 
   // AT/RTに必要な属性＋セッションID
   public interface WithSession {
