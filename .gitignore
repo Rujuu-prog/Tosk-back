@@ -65,3 +65,7 @@ bin/
 
 # Generated OpenAPI code (do not commit)
 generated/
+ 
+# Local dev certs (do not commit)
+dev/certs/
+.env.local

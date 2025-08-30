@@ -58,6 +58,12 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'com.h2database:h2'
 
+    // ---- JWT / JOSE
+    implementation 'com.nimbusds:nimbus-jose-jwt:9.37'
+
+    // ---- Mail (SMTP)
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
     // ---- SpotBugs 実行クラスパスを明示
     spotbugs 'com.github.spotbugs:spotbugs:4.9.3'
     spotbugs 'org.apache.commons:commons-lang3:3.17.0'
@@ -291,4 +297,28 @@ tasks.register('openApiGenerateFrontend', org.openapitools.generator.gradle.plug
 
 tasks.named('build') {
     dependsOn 'openApiGenerateBackend'
+}
+
+// Local .env loader for bootRun (development convenience)
+tasks.named('bootRun') {
+    doFirst {
+        def envFile = file("$rootDir/.env")
+        if (envFile.exists()) {
+            def envMap = [:]
+            envFile.eachLine { line ->
+                def t = line.trim()
+                if (!t || t.startsWith('#')) return
+                def idx = t.indexOf('=')
+                if (idx > 0) {
+                    def key = t.substring(0, idx).trim()
+                    def val = t.substring(idx + 1).trim()
+                    if (val.startsWith('"') && val.endsWith('"') && val.length() >= 2) {
+                        val = val.substring(1, val.length() - 1)
+                    }
+                    environment.put(key, val)
+                }
+            }
+            println "Loaded .env for bootRun"
+        }
+    }
 }

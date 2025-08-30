@@ -25,6 +25,8 @@ Notes:
 
 ## Local Development
 - Hot reload: `SPRING_PROFILES_ACTIVE=local ./gradlew bootRun`
+- `.env` autoload: `bootRun` はプロジェクト直下の `.env` を自動読込します（`KEY=VALUE` 形式、`#`はコメント）。
+  - 例: `APP_MAIL_PROVIDER=resend`, `RESEND_API_KEY=...`, `APP_MAIL_FROM=...` などを `.env` に書くと起動時に反映されます。
 - DB: Use Docker Compose Postgres (`localhost:5432`) or your local Postgres.
 - Profiles: `local` (dev), `docker` (compose), `prod` (production)
 

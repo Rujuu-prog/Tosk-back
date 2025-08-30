@@ -28,6 +28,7 @@ App: http://localhost:8080
 ### Docs
 - Architecture: `doc/architecture/overview.md`
 - Security/Auth: `doc/spec/auth/auth_spec.md`
+- Frontend Integration (Auth): `doc/spec/auth/frontend_integration.md`
 - Versioning & Release: `doc/spec/release/api_versioning_and_release.md`
 - Development Guide: `DEVELOPMENT.md`
 
