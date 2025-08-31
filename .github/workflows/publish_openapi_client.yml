@@ -1,0 +1,121 @@
+name: Publish OpenAPI TS Client
+
+on:
+  push:
+    tags:
+      - 'openapi-client-v*'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Determine versions (tag/spec)
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME}" # e.g. openapi-client-v1.4.0
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          VERSION_TAG=${TAG#openapi-client-v}
+          echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+          SPEC_VER=$(grep -E '^[[:space:]]*version:' -m1 src/main/resources/openapi/api_internal.yaml | sed -E 's/.*version:[[:space:]]*"?([0-9A-Za-z_.-]+)"?/\1/')
+          echo "spec_version=$SPEC_VER" >> $GITHUB_OUTPUT
+          if [ -z "$SPEC_VER" ]; then echo "Spec version not found"; exit 1; fi
+          if [ "$SPEC_VER" != "$VERSION_TAG" ]; then echo "Spec(info.version) $SPEC_VER != tag $VERSION_TAG"; exit 1; fi
+
+      - name: Generate frontend client (typescript-axios)
+        run: ./gradlew --no-daemon openApiGenerateFrontend
+
+      - name: Fetch previous openapi-client tag
+        id: prev
+        run: |
+          CUR=${{ steps.ver.outputs.version_tag }}
+          PREV_TAG=$(git tag --list 'openapi-client-v*' | grep -v "openapi-client-v$CUR$" | sort -V | tail -n1 || true)
+          echo "previous_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
+      - name: Diff with previous spec (breaking change gate)
+        if: steps.prev.outputs.previous_tag != ''
+        run: |
+          git show "${{ steps.prev.outputs.previous_tag }}:src/main/resources/openapi/api_internal.yaml" > prev_spec.yaml
+          cp src/main/resources/openapi/api_internal.yaml curr_spec.yaml
+          docker run --rm -v "$PWD":/work ghcr.io/tufin/oasdiff:latest breaking /work/prev_spec.yaml /work/curr_spec.yaml
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@${{ github.repository_owner }}'
+
+      - name: Prepare package.json for GitHub Packages
+        working-directory: generated/frontend-openapi
+        env:
+          OWNER: ${{ github.repository_owner }}
+          VERSION: ${{ steps.ver.outputs.spec_version }}
+        run: |
+          node -e '
+            const fs=require("fs");
+            const pj=JSON.parse(fs.readFileSync("package.json","utf8"));
+            const owner=process.env.OWNER;
+            pj.name = `@${owner}/tosk-openapi-client`;
+            pj.publishConfig = { registry: "https://npm.pkg.github.com" };
+            pj.version = process.env.VERSION;
+            fs.writeFileSync("package.json", JSON.stringify(pj, null, 2));
+          '
+
+      - name: Generate package-lock for generated client (no scripts)
+        working-directory: generated/frontend-openapi
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Install npm dependencies for generated client (ci)
+        working-directory: generated/frontend-openapi
+        run: npm ci
+
+      - name: Authenticate to GitHub Packages (use PAT)
+        working-directory: generated/frontend-openapi
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: |
+          # npm が参照しているユーザー設定ファイルがあるか確認し、あればそこへ書く
+          if [ -n "$NPM_CONFIG_USERCONFIG" ]; then
+            echo "@${{ github.repository_owner }}:registry=https://npm.pkg.github.com/" >> "$NPM_CONFIG_USERCONFIG"
+            echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> "$NPM_CONFIG_USERCONFIG"
+          else
+            echo "@${{ github.repository_owner }}:registry=https://npm.pkg.github.com/" >> $HOME/.npmrc
+            echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> $HOME/.npmrc
+          fi
+          # 認証確認（失敗してもパイプライン止めない場合は || true を付ける）
+          npm whoami --registry=https://npm.pkg.github.com || true
+
+      - name: Debug npm config (optional - remove in production)
+        working-directory: generated/frontend-openapi
+        run: |
+          echo "NPM_CONFIG_USERCONFIG=$NPM_CONFIG_USERCONFIG"
+          echo "HOME/.npmrc content:"
+          cat $HOME/.npmrc || true
+          if [ -n "$NPM_CONFIG_USERCONFIG" ]; then
+            echo "User config content:"
+            cat "$NPM_CONFIG_USERCONFIG" || true
+          fi
+          npm config ls -l
+
+      - name: Publish package
+        working-directory: generated/frontend-openapi
+        env:
+          DIST_TAG: ${{ contains(steps.ver.outputs.spec_version, '-') && 'next' || 'latest' }}
+        run: |
+          npm publish --access restricted --tag ${DIST_TAG} --registry https://npm.pkg.github.com

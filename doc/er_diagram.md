@@ -5,11 +5,43 @@ erDiagram
         VARCHAR username "Username"
         VARCHAR email "Email address"
         VARCHAR password_hash "Password hash"
+        BOOLEAN email_verified "Email verified flag"
+        INT token_version "Token version (for global revoke)"
         TEXT bio "Profile description (nullable)"
         VARCHAR avatar_url "Profile image URL (nullable)"
         TIMESTAMP created_at "Created timestamp"
         TIMESTAMP updated_at "Updated timestamp"
         TIMESTAMP deleted_at "Soft delete timestamp (nullable)"
+    }
+
+    AUTH_SESSION {
+        UUID id PK "Session ID"
+        UUID user_id FK "User ID (User.id)"
+        VARCHAR current_rt_jti "Current refresh token JTI"
+        VARCHAR user_agent "User-Agent (nullable)"
+        VARCHAR ip "Client IP (nullable)"
+        TIMESTAMP created_at "Created timestamp"
+        TIMESTAMP updated_at "Updated timestamp"
+        TIMESTAMP last_rotated_at "Last RT rotation time"
+        TIMESTAMP revoked_at "Revoked timestamp (nullable)"
+    }
+
+    EMAIL_VERIFICATION_TOKEN {
+        UUID id PK "Email verification token ID"
+        UUID user_id FK "User ID (User.id)"
+        VARCHAR token "Opaque token"
+        TIMESTAMP created_at "Created"
+        TIMESTAMP expires_at "Expires"
+        TIMESTAMP consumed_at "Consumed (nullable)"
+    }
+
+    PASSWORD_RESET_TOKEN {
+        UUID id PK "Password reset token ID"
+        UUID user_id FK "User ID (User.id)"
+        VARCHAR token "Opaque token"
+        TIMESTAMP created_at "Created"
+        TIMESTAMP expires_at "Expires"
+        TIMESTAMP consumed_at "Consumed (nullable)"
     }
 
     TEAM {
@@ -92,4 +124,7 @@ erDiagram
     TASK ||--o{ LIKE : "liked by"
     COMMENT ||--o{ LIKE : "liked by"
     USER ||--o{ NOTIFICATION : "receives"
+    USER ||--o{ AUTH_SESSION : "has sessions"
+    USER ||--o{ EMAIL_VERIFICATION_TOKEN : "owns"
+    USER ||--o{ PASSWORD_RESET_TOKEN : "owns"
 ```

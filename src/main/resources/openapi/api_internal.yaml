@@ -2,12 +2,12 @@ openapi: 3.1.0
 info:
   title: Tosk Internal API
   description: Internal API documentation for Tosk (Todo + SNS App)
-  version: "1.0.0"
+  version: "0.0.1"
 servers:
   - url: https://api.tosk.local/v1
     description: Local development server
 paths:
-  /auth/signup:
+  /api/auth/signup:
     post:
       summary: User signup
       requestBody:
@@ -15,17 +15,23 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SignupRequest'
+              $ref: '#/components/schemas/SignupRequestDTO'
       responses:
-        '200':
+        '201':
           description: Signup successful
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
+                $ref: '#/components/schemas/UserResponseDTO'
+              examples:
+                success:
+                  summary: Sample user
+                  value:
+                    id: "5d1e8c2b-4c9a-4fb0-9f19-9c8c9b0a1234"
+                    username: "newuser"
+                    email: "newuser@example.com"
+                    displayName: "New User"
+                    emailVerified: false
         '400':
           description: Invalid request
           content:
@@ -39,7 +45,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /auth/login:
+  /api/auth/login:
     post:
       summary: User login
       requestBody:
@@ -47,19 +53,40 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: '#/components/schemas/LoginRequestDTO'
       responses:
         '200':
-          description: Login successful
+          description: Login successful. Issues JWT cookies.
+          headers:
+            Set-Cookie:
+              description: |
+                HttpOnly/Secure cookies will be set on success.
+                Examples:
+                - ACCESS_TOKEN=jwt...; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=1800
+                - REFRESH_TOKEN=jwt...; HttpOnly; Secure; SameSite=Strict; Path=/auth; Max-Age=1209600
+              schema:
+                type: string
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  accessToken:
-                    type: string
+                $ref: '#/components/schemas/UserResponseDTO'
+              examples:
+                success:
+                  summary: Logged in user
+                  value:
+                    id: "d3b07384-d9a5-4d5e-bc3f-1a2b3c4d5e6f"
+                    username: "user1"
+                    email: "user1@example.com"
+                    displayName: "User One"
+                    emailVerified: true
         '400':
           description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized (invalid credentials)
           content:
             application/json:
               schema:
@@ -71,10 +98,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /auth/me:
+  /api/auth/me:
     get:
       summary: Get current user information
       security:
+        - cookieAuth: []
         - bearerAuth: []
       responses:
         '200':
@@ -82,7 +110,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserResponse'
+                $ref: '#/components/schemas/UserResponseDTO'
         '400':
           description: Invalid request
           content:
@@ -102,10 +130,236 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/auth/refresh:
+    post:
+      summary: Refresh access token
+      security:
+        - refreshCookieAuth: []
+      responses:
+        '200':
+          description: New token(s) issued via cookies
+          headers:
+            Set-Cookie:
+              description: |
+                Issues a new ACCESS_TOKEN and may rotate REFRESH_TOKEN.
+                Examples:
+                - ACCESS_TOKEN=jwt...; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=1800
+                - REFRESH_TOKEN=jwt...; HttpOnly; Secure; SameSite=Strict; Path=/auth; Max-Age=1209600
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Token reuse detected (session revoked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/logout:
+    post:
+      summary: Logout and clear auth cookies
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cookies cleared via Set-Cookie with Max-Age=0
+          headers:
+            Set-Cookie:
+              description: |
+                Expires ACCESS_TOKEN and REFRESH_TOKEN cookies.
+                Examples:
+                - ACCESS_TOKEN=deleted; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0
+                - REFRESH_TOKEN=deleted; HttpOnly; Secure; SameSite=Strict; Path=/auth; Max-Age=0
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/verification/start:
+    post:
+      summary: Start email verification (sends mail)
+      security:
+        - cookieAuth: []
+      responses:
+        '202':
+          description: Verification mail enqueued
+        '401':
+          description: Unauthorized
+
+  /api/auth/verification/confirm:
+    post:
+      summary: Confirm email verification
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Verified
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/password/reset/start:
+    post:
+      summary: Start password reset (sends mail)
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+      responses:
+        '202':
+          description: Reset mail enqueued (always 202)
+
+  /api/auth/password/reset/confirm:
+    post:
+      summary: Confirm password reset
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: password
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Password updated
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/sessions:
+    get:
+      summary: List sessions of current user
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Session list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuthSessionDTO'
+        '401':
+          description: Unauthorized
+    delete:
+      summary: Revoke all sessions
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: keepCurrent
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '204':
+          description: Revoked
+        '401':
+          description: Unauthorized
+
+  "/api/auth/sessions/{sid}":
+    get:
+      summary: Get session detail
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: sid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionDTO'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+    delete:
+      summary: Revoke a session
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: sid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Revoked
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+
+  
+
   /users/me:
     get:
       summary: Get current user's profile
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       responses:
         '200':
@@ -113,7 +367,23 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserResponse'
+                $ref: '#/components/schemas/UserResponseDTO'
+  /.well-known/jwks.json:
+    get:
+      summary: Public JWKS
+      description: Returns public JWKS for JWT verification (kid-based selection). Includes all active public keys.
+      responses:
+        '200':
+          description: JWKS
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
         '401':
           description: Unauthorized
           content:
@@ -130,6 +400,7 @@ paths:
     put:
       summary: Update current user's profile
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       requestBody:
         required: true
@@ -200,6 +471,7 @@ paths:
     post:
       summary: Create a new team
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       requestBody:
         required: true
@@ -267,6 +539,7 @@ paths:
     post:
       summary: Request to join a team
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: teamId
@@ -314,6 +587,7 @@ paths:
     post:
       summary: Approve a join request
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: teamId
@@ -361,6 +635,7 @@ paths:
     post:
       summary: Reject a join request
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: teamId
@@ -408,6 +683,7 @@ paths:
     post:
       summary: Create a new task
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       requestBody:
         required: true
@@ -444,6 +720,7 @@ paths:
     get:
       summary: List tasks
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: teamId
@@ -490,6 +767,7 @@ paths:
     get:
       summary: Get a task's details
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: taskId
@@ -521,6 +799,7 @@ paths:
     put:
       summary: Update a task
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: taskId
@@ -570,6 +849,7 @@ paths:
     delete:
       summary: Delete a task
       security:
+        - cookieAuth: []
         - bearerAuth: [ ]
       parameters:
         - name: taskId
@@ -613,9 +893,20 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: Bearer JWT authentication. Server allows small clock skew (~60s) during validation.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: AT
+      description: HttpOnly/Secure cookie containing short-lived access JWT. Small clock skew (~60s) tolerated.
+    refreshCookieAuth:
+      type: apiKey
+      in: cookie
+      name: RT
+      description: HttpOnly/Secure cookie containing long-lived refresh JWT. Small clock skew (~60s) tolerated.
 
   schemas:
-    SignupRequest:
+    SignupRequestDTO:
       type: object
       properties:
         username:
@@ -630,7 +921,7 @@ components:
         - email
         - password
 
-    LoginRequest:
+    LoginRequestDTO:
       type: object
       properties:
         email:
@@ -642,7 +933,7 @@ components:
         - email
         - password
 
-    UserResponse:
+    UserResponseDTO:
       type: object
       properties:
         id:
@@ -652,6 +943,10 @@ components:
           type: string
         email:
           type: string
+        displayName:
+          type: string
+        emailVerified:
+          type: boolean
 
     UserUpdateRequest:
       type: object
@@ -798,8 +1093,29 @@ components:
       properties:
         errorCode:
           type: string
+          enum: [ VALIDATION_ERROR, AUTH_INVALID_CREDENTIALS, AUTH_RATE_LIMIT, TOKEN_INVALID, TOKEN_MISSING, NOT_FOUND, TOKEN_REUSE_DETECTED ]
         message:
           type: string
       required:
         - errorCode
         - message
+
+    AuthSessionDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        lastRotatedAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: ["string", "null"]
+          format: date-time
+        ip:
+          type: ["string", "null"]
+        userAgent:
+          type: ["string", "null"]
