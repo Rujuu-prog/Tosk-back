@@ -10,6 +10,8 @@ app:
     refresh-cookie-path: /auth
     cookie-secure: false # ローカル環境では false、prod では true に上書き
     cookie-same-site: Strict
+    public-key-pem: ${JWT_PUBLIC_KEY:}
+    private-key-pem: ${JWT_PRIVATE_KEY:}
   frontend-base-url: http://localhost:3000
   mail:
     from: no-reply@tosk.local

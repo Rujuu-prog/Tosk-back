@@ -63,6 +63,9 @@ dependencies {
 
     // ---- Mail (SMTP)
     implementation 'org.springframework.boot:spring-boot-starter-mail'
+    
+    // ---- Resend
+    implementation 'com.resend:resend-java:3.0.0'
 
     // ---- SpotBugs 実行クラスパスを明示
     spotbugs 'com.github.spotbugs:spotbugs:4.9.3'
@@ -322,4 +325,12 @@ tasks.named('bootRun') {
             println "Loaded .env for bootRun"
         }
     }
+}
+
+// JWKS生成タスク
+tasks.register('generateJwks', JavaExec) {
+    group = 'utilities'
+    description = 'Generate JWT JWKS key pair'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.tosk.app.util.JwksGenerator'
 }

@@ -2,6 +2,7 @@ package com.tosk.app.common;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -19,6 +20,7 @@ public class ResendMailService implements MailService {
   private final AppProperties props;
   private final String apiKeyOverride;
 
+  @Autowired
   public ResendMailService(AppProperties props) {
     this.props = props;
     this.restTemplate = new RestTemplate();
@@ -34,9 +36,10 @@ public class ResendMailService implements MailService {
 
   @Override
   public void send(String from, String to, String subject, String textBody, String htmlBody) {
-    String apiKey = apiKeyOverride != null ? apiKeyOverride : System.getenv("RESEND_API_KEY");
+    String apiKey = apiKeyOverride != null ? apiKeyOverride : 
+        (props.getMail().getResendApiKey() != null ? props.getMail().getResendApiKey() : System.getenv("RESEND_API_KEY"));
     if (apiKey == null || apiKey.isBlank()) {
-      throw new IllegalStateException("RESEND_API_KEY is not set");
+      throw new IllegalStateException("RESEND_API_KEY is not set in app.mail.resend-api-key property or RESEND_API_KEY environment variable");
     }
 
     String url = "https://api.resend.com/emails";
