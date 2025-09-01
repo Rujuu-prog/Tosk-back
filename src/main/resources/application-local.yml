@@ -1,0 +1,26 @@
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/tosk}
+    username: ${SPRING_DATASOURCE_USERNAME:tosk}
+    password: ${SPRING_DATASOURCE_PASSWORD:tosk}
+  jackson:
+    time-zone: UTC
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO

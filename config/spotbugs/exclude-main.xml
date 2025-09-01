@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!-- Exclude EI_EXPOSE_REP/EI_EXPOSE_REP2 warnings for Spring Boot dependency injection -->
+  <!-- These are false positives in Spring-managed components -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    <Or>
+      <!-- Configuration properties objects -->
+      <Class name="com.tosk.app.security.JwtProperties"/>
+      <Class name="com.tosk.app.common.AppProperties"/>
+      
+      <!-- Framework-managed components -->
+      <Field name="meterRegistry"/>
+      <Field name="props" type="com.tosk.app.security.JwtProperties"/>
+      <Field name="props" type="com.tosk.app.common.AppProperties"/>
+      <Field name="loginRateLimiter" type="com.tosk.app.security.LoginRateLimiter"/>
+      <Field name="appProperties" type="com.tosk.app.common.AppProperties"/>
+      
+      <!-- Record classes intentionally exposing components -->
+      <Class name="com.tosk.app.security.JwtService$ParsedJwt"/>
+      <Class name="com.tosk.app.auth.AuthService$RotationResult"/>
+      
+      <!-- MeterRegistry fields in all classes -->
+      <Class name="com.tosk.app.auth.AuthService"/>
+      <Class name="com.tosk.app.security.LoginRateLimiter"/>
+    </Or>
+  </Match>
+</FindBugsFilter>

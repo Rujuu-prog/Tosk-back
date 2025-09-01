@@ -1,0 +1,23 @@
+services:
+  app-dev:
+    image: eclipse-temurin:21-jdk
+    container_name: tosk-app-dev
+    working_dir: /workspace
+    command: ["bash", "-lc", "./gradlew --no-daemon bootRun -Dspring-boot.run.jvmArguments=\"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005\""]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75 -Duser.timezone=UTC -Dfile.encoding=UTF-8"
+    ports:
+      - "8080:8080"
+      - "5005:5005"
+    volumes:
+      - ./:/workspace:cached
+      - gradle-cache:/workspace/.gradle
+
+volumes:
+  gradle-cache:

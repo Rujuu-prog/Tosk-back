@@ -1,0 +1,32 @@
+app:
+  jwt:
+    issuer: com.tosk.app
+    audience: tosk.web
+    access-ttl: 10m
+    refresh-ttl: 14d
+    access-cookie: AT
+    refresh-cookie: RT
+    access-cookie-path: /
+    refresh-cookie-path: /auth
+    cookie-secure: false # ローカル環境では false、prod では true に上書き
+    cookie-same-site: Strict
+  frontend-base-url: http://localhost:3000
+  mail:
+    from: no-reply@tosk.local
+    subject-prefix: "[TOSK] "
+    provider: logging # logging | smtp | resend
+
+spring:
+  jpa:
+    open-in-view: false
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_STARTTLS:false}

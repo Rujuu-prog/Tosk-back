@@ -59,3 +59,13 @@ bin/
 
 ### AWS credentials ###
 .aws/
+
+# Local overrides
+.env
+
+# Generated OpenAPI code (do not commit)
+generated/
+ 
+# Local dev certs (do not commit)
+dev/certs/
+.env.local
