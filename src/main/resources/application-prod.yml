@@ -27,3 +27,8 @@ logging:
   level:
     root: INFO
     org.springframework: INFO
+
+app:
+  mail:
+    provider: resend
+    from: "noreply@your-domain.com"

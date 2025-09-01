@@ -41,7 +41,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
-    runtimeOnly   'org.postgresql:postgresql'
+    implementation 'org.postgresql:postgresql'
 
     // ---- OpenAPI (Spring Boot 3.3.x 対応)
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
@@ -56,6 +56,7 @@ dependencies {
 
     // ---- Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'com.h2database:h2'
 
     // ---- JWT / JOSE
@@ -63,6 +64,9 @@ dependencies {
 
     // ---- Mail (SMTP)
     implementation 'org.springframework.boot:spring-boot-starter-mail'
+    
+    // ---- Resend
+    implementation 'com.resend:resend-java:3.0.0'
 
     // ---- SpotBugs 実行クラスパスを明示
     spotbugs 'com.github.spotbugs:spotbugs:4.9.3'
@@ -322,4 +326,12 @@ tasks.named('bootRun') {
             println "Loaded .env for bootRun"
         }
     }
+}
+
+// JWKS生成タスク
+tasks.register('generateJwks', JavaExec) {
+    group = 'utilities'
+    description = 'Generate JWT JWKS key pair'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.tosk.app.util.JwksGenerator'
 }

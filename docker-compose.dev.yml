@@ -12,12 +12,19 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75 -Duser.timezone=UTC -Dfile.encoding=UTF-8"
+      SPRING_DEVTOOLS_RESTART_ENABLED: "false"
     ports:
       - "8080:8080"
       - "5005:5005"
     volumes:
       - ./:/workspace:cached
       - gradle-cache:/workspace/.gradle
+    networks:
+      - default
+
+networks:
+  default:
+    name: tosk-back_default
 
 volumes:
   gradle-cache:

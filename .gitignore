@@ -69,3 +69,6 @@ generated/
 # Local dev certs (do not commit)
 dev/certs/
 .env.local
+
+# JWT RSA keys (do not commit - security critical)
+keys/

@@ -1,9 +1,7 @@
 package com.tosk.app.common;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
-@Component
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
   private String frontendBaseUrl = "https://localhost:3000";
@@ -26,6 +24,7 @@ public class AppProperties {
     private String subjectPrefix = "[TOSK] ";
     private String provider = "logging"; // logging|smtp|resend
     private String locale = "ja";
+    private String resendApiKey;
 
     public String getFrom() {
       return from;
@@ -57,6 +56,14 @@ public class AppProperties {
 
     public void setLocale(String locale) {
       this.locale = locale;
+    }
+
+    public String getResendApiKey() {
+      return resendApiKey;
+    }
+
+    public void setResendApiKey(String resendApiKey) {
+      this.resendApiKey = resendApiKey;
     }
   }
 }

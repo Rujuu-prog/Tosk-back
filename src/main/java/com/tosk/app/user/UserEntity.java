@@ -38,6 +38,12 @@ public class UserEntity {
   @lombok.Builder.Default
   private Boolean emailVerified = Boolean.FALSE;
 
+  @Column(name = "bio")
+  private String bio;
+
+  @Column(name = "avatar_url")
+  private String avatarUrl;
+
   // オプション: 全無効化用途（Flywayで追加する想定。テストではDDLで列が作られる）
   @Column(name = "token_version")
   @lombok.Builder.Default
