@@ -36,10 +36,15 @@ public class ResendMailService implements MailService {
 
   @Override
   public void send(String from, String to, String subject, String textBody, String htmlBody) {
-    String apiKey = apiKeyOverride != null ? apiKeyOverride : 
-        (props.getMail().getResendApiKey() != null ? props.getMail().getResendApiKey() : System.getenv("RESEND_API_KEY"));
+    String apiKey =
+        apiKeyOverride != null
+            ? apiKeyOverride
+            : (props.getMail().getResendApiKey() != null
+                ? props.getMail().getResendApiKey()
+                : System.getenv("RESEND_API_KEY"));
     if (apiKey == null || apiKey.isBlank()) {
-      throw new IllegalStateException("RESEND_API_KEY is not set in app.mail.resend-api-key property or RESEND_API_KEY environment variable");
+      throw new IllegalStateException(
+          "RESEND_API_KEY is not set in app.mail.resend-api-key property or RESEND_API_KEY environment variable");
     }
 
     String url = "https://api.resend.com/emails";

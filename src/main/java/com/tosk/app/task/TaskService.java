@@ -41,6 +41,11 @@ public class TaskService {
   }
 
   public TaskResponseDTO getTaskById(UUID taskId, UUID requestUserId) {
+    TaskEntity task = getTaskEntityById(taskId, requestUserId);
+    return TaskResponseDTO.from(task);
+  }
+
+  public TaskEntity getTaskEntityById(UUID taskId, UUID requestUserId) {
     TaskEntity task =
         taskRepository
             .findByIdAndDeletedAtIsNull(taskId)
@@ -50,7 +55,7 @@ public class TaskService {
       throw new IllegalArgumentException("Access denied to task: " + taskId);
     }
 
-    return TaskResponseDTO.from(task);
+    return task;
   }
 
   public Page<TaskResponseDTO> getTasks(
@@ -138,10 +143,10 @@ public class TaskService {
 
   private boolean canViewTask(TaskEntity task, UUID requestUserId) {
     return switch (task.getVisibility()) {
-      case PRIVATE -> task.getUserId().equals(requestUserId);
-      case TEAM -> task.getUserId().equals(requestUserId)
+      case private_ -> task.getUserId().equals(requestUserId);
+      case team -> task.getUserId().equals(requestUserId)
           || isTeamMember(task.getTeamId(), requestUserId);
-      case PUBLIC -> true;
+      case public_ -> true;
     };
   }
 
@@ -149,13 +154,13 @@ public class TaskService {
     if (task.getUserId().equals(requestUserId)) {
       return true;
     }
-    return task.getVisibility() == TaskEntity.Visibility.TEAM
+    return task.getVisibility() == TaskEntity.Visibility.team
         && isTeamLeader(task.getTeamId(), requestUserId);
   }
 
   private boolean canDeleteTask(TaskEntity task, UUID requestUserId) {
     return task.getUserId().equals(requestUserId)
-        || (task.getVisibility() == TaskEntity.Visibility.TEAM
+        || (task.getVisibility() == TaskEntity.Visibility.team
             && isTeamLeader(task.getTeamId(), requestUserId));
   }
 
@@ -168,7 +173,7 @@ public class TaskService {
   }
 
   private void validateTaskVisibility(TaskEntity.Visibility visibility, UUID teamId) {
-    if (visibility == TaskEntity.Visibility.TEAM && teamId == null) {
+    if (visibility == TaskEntity.Visibility.team && teamId == null) {
       throw new IllegalArgumentException("Team ID is required for team visibility");
     }
   }

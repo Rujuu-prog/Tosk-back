@@ -1,9 +1,10 @@
 package com.tosk.app.task;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -30,7 +31,7 @@ public class TaskEntity {
   @Column(name = "id", nullable = false, columnDefinition = "uuid")
   private UUID id;
 
-  @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
+  @Column(name = "author_id", nullable = false, columnDefinition = "uuid")
   private UUID userId;
 
   @Column(name = "team_id", columnDefinition = "uuid")
@@ -45,15 +46,15 @@ public class TaskEntity {
   @Column(name = "due_date")
   private LocalDate dueDate;
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "priority", nullable = false)
+  @Convert(converter = PriorityConverter.class)
+  @Column(name = "priority", nullable = false, columnDefinition = "task_priority")
   @Builder.Default
-  private Priority priority = Priority.MEDIUM;
+  private Priority priority = Priority.medium;
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "visibility", nullable = false)
+  @Convert(converter = VisibilityConverter.class)
+  @Column(name = "visibility", nullable = false, columnDefinition = "task_visibility")
   @Builder.Default
-  private Visibility visibility = Visibility.PRIVATE;
+  private Visibility visibility = Visibility.private_;
 
   @Column(name = "like_count", nullable = false)
   @Builder.Default
@@ -73,15 +74,49 @@ public class TaskEntity {
   private OffsetDateTime deletedAt;
 
   public enum Priority {
-    LOW,
-    MEDIUM,
-    HIGH
+    low,
+    medium,
+    high;
+
+    @JsonCreator
+    public static Priority fromString(String value) {
+      return switch (value.toLowerCase()) {
+        case "low" -> low;
+        case "medium" -> medium;
+        case "high" -> high;
+        default -> throw new IllegalArgumentException("Unknown priority: " + value);
+      };
+    }
+
+    @JsonValue
+    public String toValue() {
+      return name();
+    }
   }
 
   public enum Visibility {
-    PRIVATE,
-    TEAM,
-    PUBLIC
+    private_,
+    team,
+    public_;
+
+    @JsonCreator
+    public static Visibility fromString(String value) {
+      return switch (value.toLowerCase()) {
+        case "private" -> private_;
+        case "team" -> team;
+        case "public" -> public_;
+        default -> throw new IllegalArgumentException("Unknown visibility: " + value);
+      };
+    }
+
+    @JsonValue
+    public String toValue() {
+      return switch (this) {
+        case private_ -> "private";
+        case team -> "team";
+        case public_ -> "public";
+      };
+    }
   }
 
   @PrePersist

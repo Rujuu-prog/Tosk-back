@@ -22,12 +22,12 @@ public interface TaskRepository extends JpaRepository<TaskEntity, UUID> {
   Page<TaskEntity> findByUserIdAndDeletedAtIsNull(@Param("userId") UUID userId, Pageable pageable);
 
   @Query(
-      "SELECT t FROM TaskEntity t WHERE t.visibility = 'PUBLIC' AND t.deletedAt IS NULL ORDER BY"
+      "SELECT t FROM TaskEntity t WHERE t.visibility = com.tosk.app.task.TaskEntity$Visibility.public_ AND t.deletedAt IS NULL ORDER BY"
           + " t.updatedAt DESC")
   Page<TaskEntity> findPublicTasksOrderByUpdatedAtDesc(Pageable pageable);
 
   @Query(
-      "SELECT t FROM TaskEntity t WHERE t.teamId = :teamId AND t.visibility IN ('TEAM', 'PUBLIC')"
+      "SELECT t FROM TaskEntity t WHERE t.teamId = :teamId AND (t.visibility = com.tosk.app.task.TaskEntity$Visibility.team OR t.visibility = com.tosk.app.task.TaskEntity$Visibility.public_)"
           + " AND t.deletedAt IS NULL ORDER BY t.updatedAt DESC")
   Page<TaskEntity> findByTeamIdAndVisibilityInOrderByUpdatedAtDesc(
       @Param("teamId") UUID teamId, Pageable pageable);
